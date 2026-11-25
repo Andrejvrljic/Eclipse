@@ -75,8 +75,9 @@ jobs:
           echo "Aktuelle Subdomain: ${CUR:-keine} · gewünscht: $WANTED_SUBDOMAIN"
           if [ -n "$CUR" ] && [ "$CUR" != "$WANTED_SUBDOMAIN" ]; then
             OLD="$CUR"
-            RES="$(curl -sS -X DELETE -H "$AUTH" "$API/accounts/$ACC/workers/subdomain")"
-            if echo "$RES" | grep -Eq '"success": *true'; then
+            CODE="$(curl -sS -o /tmp/del.json -w '%{http_code}' -X DELETE -H "$AUTH" "$API/accounts/$ACC/workers/subdomain")"
+            RES="$(cat /tmp/del.json 2>/dev/null)"
+            if [ "${CODE:0:1}" = "2" ]; then
               echo "Alte Subdomain $OLD entfernt."; CUR=""
             else
               echo "$RES" | head -c 400; echo
