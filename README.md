@@ -4,7 +4,7 @@ Gemeinsames Projekt-Dashboard für die Entwicklung des 3D-Open-World-Multiplayer
 Die Plattform ist das Planungswerkzeug, nicht das Spiel selbst.
 
 **Live (claude.ai):** https://claude.ai/artifact/Svdgzg2oGynfg6nfsXS8to
-**Live (Cloudflare):** `https://leonard-schlichting.<dein-subdomain>.workers.dev` – wird per GitHub Actions veröffentlicht
+**Live (Cloudflare):** https://eclipse.leonard-schlichting.workers.dev (Subdomain wird vom Workflow automatisch angelegt) – wird per GitHub Actions veröffentlicht
 
 > Die beiden Versionen haben **getrennte Datenbanken**. Entscheidet euch für eine als Hauptversion.
 

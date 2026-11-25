@@ -57,8 +57,37 @@ jobs:
           sed -i "s/__D1_DATABASE_ID__/$DB_ID/" wrangler.toml
           echo "D1-Datenbank: $DB_ID"
 
+      - name: workers.dev-Subdomain sicherstellen
+        env:
+          WANTED_SUBDOMAIN: ${{ vars.WORKERS_SUBDOMAIN || 'leonard-schlichting' }}
+        run: |
+          API=https://api.cloudflare.com/client/v4
+          AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          ACC="$CLOUDFLARE_ACCOUNT_ID"
+          if [ -z "$ACC" ]; then
+            ACC="$(curl -fsS -H "$AUTH" "$API/accounts?per_page=5" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s).result||[];process.stdout.write(r[0]?r[0].id:"")})')"
+          fi
+          if [ -z "$ACC" ]; then echo "::error::Cloudflare-Konto nicht gefunden. Lege das Secret CLOUDFLARE_ACCOUNT_ID an."; exit 1; fi
+          CUR="$(curl -sS -H "$AUTH" "$API/accounts/$ACC/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);process.stdout.write((j.result&&j.result.subdomain)||"")}catch{}})')"
+          if [ -n "$CUR" ]; then
+            echo "Vorhandene Subdomain: $CUR.workers.dev"
+          else
+            for NAME in "$WANTED_SUBDOMAIN" "$WANTED_SUBDOMAIN-eclipse" "$WANTED_SUBDOMAIN-dev" "$WANTED_SUBDOMAIN-$(date +%s | tail -c 5)"; do
+              echo "Versuche Subdomain $NAME …"
+              RES="$(curl -sS -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data "{\"subdomain\":\"$NAME\"}" "$API/accounts/$ACC/workers/subdomain")"
+              if echo "$RES" | grep -q '"success":true'; then CUR="$NAME"; break; fi
+              echo "$RES" | head -c 400; echo
+            done
+            if [ -z "$CUR" ]; then echo "::error::Konnte keine workers.dev-Subdomain anlegen."; exit 1; fi
+            echo "Neue Subdomain: $CUR.workers.dev"
+          fi
+          echo "SUBDOMAIN=$CUR" >> "$GITHUB_ENV"
+
       - name: Worker veröffentlichen
-        run: npx wrangler deploy
+        run: |
+          npx wrangler deploy
+          echo "::notice title=Adresse::https://eclipse.$SUBDOMAIN.workers.dev"
+          echo "### Online: https://eclipse.$SUBDOMAIN.workers.dev" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Team-Schlüssel setzen (optional)
         env:
