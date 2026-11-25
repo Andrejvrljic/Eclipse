@@ -1,0 +1,16 @@
+# Neues Spiel (Arbeitsname "spiel2"): eigener Worker, eigene D1-Datenbank, eigener Link.
+# Adresse: https://spiel2.<subdomain>.workers.dev  (Name hier ändern = neue Adresse)
+name = "spiel2"
+main = "worker/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# database_id wird im GitHub-Actions-Workflow eingesetzt (die Datenbank wird dort bei Bedarf angelegt).
+[[d1_databases]]
+binding = "DB"
+database_name = "spiel2-db"
+database_id = "__D1_DATABASE_ID__"

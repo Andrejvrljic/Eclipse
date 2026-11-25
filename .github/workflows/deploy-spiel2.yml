@@ -1,0 +1,104 @@
+name: Deploy Neues Spiel (spiel2)
+
+# Veröffentlicht spiel2/ als eigenen Cloudflare Worker mit eigener D1-Datenbank.
+# Nutzt dieselben Repository-Secrets wie ECLIPSE (CLOUDFLARE_API_TOKEN, optional CLOUDFLARE_ACCOUNT_ID).
+
+on:
+  push:
+    branches:
+      - main
+      - claude/funny-gates-lumgap
+    paths:
+      - 'spiel2/**'
+      - '.github/workflows/deploy-spiel2.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-spiel2
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spiel2
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB_NAME: spiel2-db
+      WORKER_NAME: spiel2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Secret prüfen
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Das Repository-Secret CLOUDFLARE_API_TOKEN fehlt (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - name: Wrangler installieren
+        run: npm install --no-audit --no-fund
+
+      - name: D1-Datenbank sicherstellen
+        run: |
+          find_db() {
+            npx wrangler d1 list --json 2>/dev/null | node -e '
+              let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+                const i = s.indexOf("["); if (i < 0) return;
+                const db = JSON.parse(s.slice(i)).find(x => x.name === process.env.DB_NAME);
+                if (db) process.stdout.write(db.uuid || db.id || "");
+              });'
+          }
+          DB_ID="$(find_db)"
+          if [ -z "$DB_ID" ]; then
+            echo "Lege D1-Datenbank $DB_NAME an …"
+            npx wrangler d1 create "$DB_NAME"
+            DB_ID="$(find_db)"
+          fi
+          if [ -z "$DB_ID" ]; then echo "::error::D1-Datenbank konnte nicht gefunden oder angelegt werden. Hat der Token das Recht D1: Edit?"; exit 1; fi
+          sed -i "s/__D1_DATABASE_ID__/$DB_ID/" wrangler.toml
+          echo "D1-Datenbank: $DB_ID"
+
+      - name: workers.dev-Subdomain ermitteln
+        run: |
+          # Die Subdomain des Kontos (z. B. dinnerboneagg) wird nur gelesen, nicht verändert –
+          # die verwaltet der ECLIPSE-Workflow.
+          API=https://api.cloudflare.com/client/v4
+          AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          ACC="$CLOUDFLARE_ACCOUNT_ID"
+          if [ -z "$ACC" ]; then
+            ACC="$(curl -fsS -H "$AUTH" "$API/accounts?per_page=5" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s).result||[];process.stdout.write(r[0]?r[0].id:"")})')"
+          fi
+          SUB="$(curl -sS -H "$AUTH" "$API/accounts/$ACC/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);process.stdout.write((j.result&&j.result.subdomain)||"")}catch{}})')"
+          echo "Subdomain: ${SUB:-unbekannt}"
+          echo "SUBDOMAIN=$SUB" >> "$GITHUB_ENV"
+
+      - name: Worker veröffentlichen
+        run: npx wrangler deploy
+
+      - name: Schreibschlüssel setzen (optional)
+        env:
+          WRITE_KEY: ${{ secrets.SPIEL2_WRITE_KEY }}
+        run: |
+          if [ -n "$WRITE_KEY" ]; then
+            printf '%s' "$WRITE_KEY" | npx wrangler secret put WRITE_KEY
+          else
+            echo "Kein SPIEL2_WRITE_KEY gesetzt: Schreiben in die Datenbank ist ohne Schlüssel möglich."
+          fi
+
+      - name: Funktionstest
+        run: |
+          URL="https://$WORKER_NAME.$SUBDOMAIN.workers.dev"
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "$URL/api/status" -o status.json; then cat status.json; echo; break; fi
+            echo "Noch nicht erreichbar, neuer Versuch in 10 s …"; sleep 10
+          done
+          if [ ! -s status.json ]; then echo "::warning::$URL/api/status antwortet noch nicht (neue workers.dev-Adressen brauchen manchmal ein paar Minuten)."; fi
+          echo "::notice title=Adresse::$URL"
+          echo "### Online: $URL" >> "$GITHUB_STEP_SUMMARY"

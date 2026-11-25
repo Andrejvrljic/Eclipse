@@ -62,3 +62,24 @@ Die Daten liegen in der gemeinsamen Datenbank des veröffentlichten Artifacts. B
 brauchen Zugriff auf dieselbe URL mit mindestens der Rolle **Mitwirkender (Contributor)**;
 Betrachter können nur lesen. Wer gerade arbeitet („Entwickler 1“ / „Entwickler 2“), wird pro
 Browser gewählt und als Autor im Aktivitätslog verwendet.
+
+---
+
+# Neues Spiel (Arbeitsname `spiel2`)
+
+Eigene Website mit eigener D1-Datenbank, getrennt von ECLIPSE. Das Spiel selbst ist noch nicht gebaut –
+eingerichtet sind Webseite, API, Datenbank und ein Dashboard zum Ansehen und Testen der Daten.
+
+**Live (Cloudflare):** https://spiel2.dinnerboneagg.workers.dev
+
+| Datei | Zweck |
+| --- | --- |
+| `spiel2/public/index.html` | Dashboard (Status, Datenbank-Test, Daten ansehen/bearbeiten, API-Übersicht) |
+| `spiel2/worker/index.js` | API unter `/api/*` (Dokumente in Sammlungen, Live-Abgleich per `?since=`) |
+| `spiel2/wrangler.toml` | Worker `spiel2`, Datenbank `spiel2-db` |
+| `.github/workflows/deploy-spiel2.yml` | Veröffentlichung bei Änderungen in `spiel2/` |
+
+Nutzt dieselben Secrets wie ECLIPSE (`CLOUDFLARE_API_TOKEN`, optional `CLOUDFLARE_ACCOUNT_ID`).
+Optional: Secret `SPIEL2_WRITE_KEY` – dann darf nur schreiben, wer den Header `x-write-key` mitschickt.
+
+Lokal testen: `cd spiel2 && npm install && npx wrangler dev`
