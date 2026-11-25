@@ -31,8 +31,10 @@ jobs:
             exit 1
           fi
 
-      - name: Wrangler installieren
-        run: npm install --no-save wrangler@4
+      - name: Abhängigkeiten und Wrangler installieren
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund wrangler@4
 
       - name: Seite bauen
         run: node scripts/build.mjs
@@ -112,3 +114,19 @@ jobs:
           RES="$(curl -sS -X DELETE -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             "https://api.cloudflare.com/client/v4/accounts/$CF_ACC/workers/scripts/eclipse/secrets/TEAM_KEY")"
           if echo "$RES" | grep -Eq '"success": *true'; then echo "Team-Schlüssel entfernt."; else echo "Kein Team-Schlüssel vorhanden (oder bereits entfernt)."; fi
+
+      - name: KI-Assistent einrichten (Admin-Passwort und Anthropic-Schlüssel)
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ADMIN_KEY" ]; then
+            printf '%s' "$ADMIN_KEY" | npx wrangler secret put ADMIN_KEY
+          else
+            echo "::warning::Secret ADMIN_KEY fehlt: Der KI-Assistent bleibt gesperrt."
+          fi
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY
+          else
+            echo "::warning::Secret ANTHROPIC_API_KEY fehlt: Der KI-Assistent kann nicht antworten."
+          fi
