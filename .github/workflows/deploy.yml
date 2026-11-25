@@ -75,7 +75,8 @@ jobs:
             for NAME in "$WANTED_SUBDOMAIN" "$WANTED_SUBDOMAIN-eclipse" "$WANTED_SUBDOMAIN-dev" "$WANTED_SUBDOMAIN-$(date +%s | tail -c 5)"; do
               echo "Versuche Subdomain $NAME …"
               RES="$(curl -sS -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data "{\"subdomain\":\"$NAME\"}" "$API/accounts/$ACC/workers/subdomain")"
-              if echo "$RES" | grep -q '"success":true'; then CUR="$NAME"; break; fi
+              if echo "$RES" | grep -Eq '"success": *true'; then CUR="$NAME"; break; fi
+              if echo "$RES" | grep -q '10036'; then CUR="$(curl -sS -H "$AUTH" "$API/accounts/$ACC/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(JSON.parse(s).result.subdomain||"")}catch{}})')"; [ -n "$CUR" ] && break; fi
               echo "$RES" | head -c 400; echo
             done
             if [ -z "$CUR" ]; then echo "::error::Konnte keine workers.dev-Subdomain anlegen."; exit 1; fi
