@@ -59,7 +59,7 @@ jobs:
 
       - name: workers.dev-Subdomain sicherstellen
         env:
-          WANTED_SUBDOMAIN: ${{ vars.WORKERS_SUBDOMAIN || 'leonard-schlichting' }}
+          WANTED_SUBDOMAIN: ${{ vars.WORKERS_SUBDOMAIN || 'dinnerboneagg' }}
         run: |
           API=https://api.cloudflare.com/client/v4
           AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
@@ -69,18 +69,32 @@ jobs:
           fi
           if [ -z "$ACC" ]; then echo "::error::Cloudflare-Konto nicht gefunden. Lege das Secret CLOUDFLARE_ACCOUNT_ID an."; exit 1; fi
           CUR="$(curl -sS -H "$AUTH" "$API/accounts/$ACC/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);process.stdout.write((j.result&&j.result.subdomain)||"")}catch{}})')"
-          if [ -n "$CUR" ]; then
-            echo "Vorhandene Subdomain: $CUR.workers.dev"
-          else
-            for NAME in "$WANTED_SUBDOMAIN" "$WANTED_SUBDOMAIN-eclipse" "$WANTED_SUBDOMAIN-dev" "$WANTED_SUBDOMAIN-$(date +%s | tail -c 5)"; do
-              echo "Versuche Subdomain $NAME …"
-              RES="$(curl -sS -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data "{\"subdomain\":\"$NAME\"}" "$API/accounts/$ACC/workers/subdomain")"
-              if echo "$RES" | grep -Eq '"success": *true'; then CUR="$NAME"; break; fi
-              if echo "$RES" | grep -q '10036'; then CUR="$(curl -sS -H "$AUTH" "$API/accounts/$ACC/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(JSON.parse(s).result.subdomain||"")}catch{}})')"; [ -n "$CUR" ] && break; fi
+          put_sub() {
+            curl -sS -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data "{\"subdomain\":\"$1\"}" "$API/accounts/$ACC/workers/subdomain"
+          }
+          echo "Aktuelle Subdomain: ${CUR:-keine} · gewünscht: $WANTED_SUBDOMAIN"
+          if [ -n "$CUR" ] && [ "$CUR" != "$WANTED_SUBDOMAIN" ]; then
+            OLD="$CUR"
+            RES="$(curl -sS -X DELETE -H "$AUTH" "$API/accounts/$ACC/workers/subdomain")"
+            if echo "$RES" | grep -Eq '"success": *true'; then
+              echo "Alte Subdomain $OLD entfernt."; CUR=""
+            else
               echo "$RES" | head -c 400; echo
-            done
-            if [ -z "$CUR" ]; then echo "::error::Konnte keine workers.dev-Subdomain anlegen."; exit 1; fi
-            echo "Neue Subdomain: $CUR.workers.dev"
+              echo "::warning::Die alte Subdomain $OLD konnte nicht entfernt werden. Die Seite bleibt unter der alten Adresse erreichbar."
+            fi
+          fi
+          if [ -z "$CUR" ]; then
+            RES="$(put_sub "$WANTED_SUBDOMAIN")"
+            if echo "$RES" | grep -Eq '"success": *true'; then
+              CUR="$WANTED_SUBDOMAIN"; echo "Neue Subdomain: $CUR.workers.dev"
+            else
+              echo "$RES" | head -c 400; echo
+              if [ -n "${OLD:-}" ] && echo "$(put_sub "$OLD")" | grep -Eq '"success": *true'; then
+                CUR="$OLD"; echo "::warning::$WANTED_SUBDOMAIN ist nicht verfügbar. Die alte Subdomain $OLD wurde wiederhergestellt."
+              else
+                echo "::error::Die Subdomain $WANTED_SUBDOMAIN konnte nicht angelegt werden (vielleicht schon vergeben)."; exit 1
+              fi
+            fi
           fi
           echo "SUBDOMAIN=$CUR" >> "$GITHUB_ENV"
           echo "CF_ACC=$ACC" >> "$GITHUB_ENV"
