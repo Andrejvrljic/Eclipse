@@ -115,18 +115,12 @@ jobs:
             "https://api.cloudflare.com/client/v4/accounts/$CF_ACC/workers/scripts/eclipse/secrets/TEAM_KEY")"
           if echo "$RES" | grep -Eq '"success": *true'; then echo "Team-Schlüssel entfernt."; else echo "Kein Team-Schlüssel vorhanden (oder bereits entfernt)."; fi
 
-      - name: KI-Assistent einrichten (Admin-Passwort und Anthropic-Schlüssel)
-        env:
-          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Spiel bauen
+        run: node game/build.mjs
+
+      - name: Spiel veröffentlichen
         run: |
-          if [ -n "$ADMIN_KEY" ]; then
-            printf '%s' "$ADMIN_KEY" | npx wrangler secret put ADMIN_KEY
-          else
-            echo "::warning::Secret ADMIN_KEY fehlt: Der KI-Assistent bleibt gesperrt."
-          fi
-          if [ -n "$ANTHROPIC_API_KEY" ]; then
-            printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY
-          else
-            echo "::warning::Secret ANTHROPIC_API_KEY fehlt: Der KI-Assistent kann nicht antworten."
-          fi
+          npx wrangler deploy -c game/wrangler.toml
+          echo "::notice title=Spiel::https://spiel.$SUBDOMAIN.workers.dev"
+          echo "### Spiel: https://spiel.$SUBDOMAIN.workers.dev" >> "$GITHUB_STEP_SUMMARY"

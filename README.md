@@ -1,3 +1,24 @@
+# ECLIPSE
+
+Dieses Repository enthält zwei Websites:
+
+- **Dev Platform** (Projekt-Dashboard): https://eclipse.dinnerboneagg.workers.dev
+- **Spiel** (spielbarer Prototyp): https://spiel.dinnerboneagg.workers.dev
+
+## Spiel (`game/`)
+
+Browserbasierter 3D-Prototyp: prozedurale Insel mit Sonnenfinsternis, Spielfigur (laufen, sprinten, springen, schwimmen),
+Geländewagen (einsteigen mit E), 25 sammelbare Eclipse-Splitter und Mehrspieler in Echtzeit.
+
+| Teil | Technik |
+| --- | --- |
+| Rendering | Three.js (`game/src/world.js`, `models.js`) |
+| Physik | Rapier.js (Charakter-Controller, Raycast-Fahrzeug, Höhenfeld) |
+| Mehrspieler | WebSocket zu einem Cloudflare Durable Object (`game/worker.js`) |
+| Steuerung | Tastatur/Maus und Touch (iPad) (`game/src/input.js`) |
+
+Lokal starten: `npm install && npm run dev:game`
+
 # ECLIPSE – Dev Platform
 
 Gemeinsames Projekt-Dashboard für die Entwicklung des 3D-Open-World-Multiplayer-Spiels **ECLIPSE**.
@@ -21,15 +42,7 @@ Repository-Secrets (Settings → Secrets and variables → Actions):
 | `CLOUDFLARE_API_TOKEN` | ja | API-Token mit *Workers Scripts: Edit*, *D1: Edit*, *Account Settings: Read* |
 | `CLOUDFLARE_ACCOUNT_ID` | nur bei mehreren Konten | Cloudflare-Account-ID |
 | `TEAM_KEY` | – | Wird nicht mehr verwendet: Die Seite ist ohne Passwort erreichbar |
-| `ADMIN_KEY` | für den KI-Assistenten | Admin-Passwort: Nur damit kann man im KI-Chat Änderungen machen |
-| `ANTHROPIC_API_KEY` | für den KI-Assistenten | API-Schlüssel von console.anthropic.com (Claude) |
 
-## KI-Assistent
-
-Unten rechts auf der Cloudflare-Version: Der Admin meldet sich mit `ADMIN_KEY` an und gibt Anweisungen
-in normaler Sprache („Setz ECL-009 auf Hoch und gib sie Entwickler 1“). Claude (Modell `claude-opus-5-5`)
-liest und ändert die Daten über Werkzeuge im Worker (`worker/chat.js`); jede Änderung wird geprüft und im
-Aktivitätslog vermerkt. Löschen nur nach ausdrücklicher Bestätigung im Chat.
 
 Lokal testen: `node scripts/build.mjs && npx wrangler dev`
 

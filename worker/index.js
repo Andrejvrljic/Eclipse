@@ -1,7 +1,6 @@
-// ECLIPSE – Dev Platform: API für die gemeinsamen Daten (Cloudflare Worker + D1) und den KI-Assistenten.
+// ECLIPSE – Dev Platform: API für die gemeinsamen Daten (Cloudflare Worker + D1).
 // Statische Dateien (public/) liefert Cloudflare direkt aus; dieser Worker beantwortet /api/*.
 import { COLLS, ID_RE, init, getDoc, putDoc, patchDoc, deleteDoc } from './store.js';
-import { runChat } from './chat.js';
 
 const COLL_SET = new Set(COLLS);
 const MAX_BODY = 256 * 1024;
@@ -29,28 +28,6 @@ async function readJson(request) {
   } catch {
     return { error: json({ error: 'Ungültiges JSON' }, 400) };
   }
-}
-
-// Kleiner Schutz gegen Passwort-Raten: pro Worker-Instanz höchstens 10 Fehlversuche pro Minute und IP.
-const failed = new Map();
-function tooManyFails(ip) {
-  const now = Date.now();
-  const list = (failed.get(ip) || []).filter((t) => now - t < 60000);
-  failed.set(ip, list);
-  return list.length >= 10;
-}
-function noteFail(ip) { const l = failed.get(ip) || []; l.push(Date.now()); failed.set(ip, l); }
-
-/** Prüft das Admin-Passwort. Gibt eine Fehlerantwort zurück oder null, wenn alles passt. */
-function checkAdmin(request, env) {
-  if (!env.ADMIN_KEY) return json({ error: 'Das Admin-Passwort ist noch nicht eingerichtet (GitHub-Secret ADMIN_KEY).', code: 'admin_unset' }, 503);
-  const ip = request.headers.get('cf-connecting-ip') || 'x';
-  if (tooManyFails(ip)) return json({ error: 'Zu viele Fehlversuche. Warte eine Minute.', code: 'admin_locked' }, 429);
-  if (!safeEqual(request.headers.get('x-admin-key') || '', env.ADMIN_KEY)) {
-    noteFail(ip);
-    return json({ error: 'Das Admin-Passwort ist falsch.', code: 'admin_wrong' }, 401);
-  }
-  return null;
 }
 
 async function handleDocs(request, env, url) {
@@ -98,21 +75,6 @@ async function handleApi(request, env, url) {
   }
   await init(env.DB);
 
-  if (url.pathname === '/api/status' && request.method === 'GET') {
-    return json({ ai: !!env.ANTHROPIC_API_KEY, admin: !!env.ADMIN_KEY });
-  }
-  if (url.pathname === '/api/admin/check' && request.method === 'POST') {
-    return checkAdmin(request, env) || json({ ok: true, ai: !!env.ANTHROPIC_API_KEY });
-  }
-  if (url.pathname === '/api/chat' && request.method === 'POST') {
-    const denied = checkAdmin(request, env);
-    if (denied) return denied;
-    if (!env.ANTHROPIC_API_KEY) return json({ error: 'Die KI ist noch nicht eingerichtet (GitHub-Secret ANTHROPIC_API_KEY).', code: 'ai_unset' }, 503);
-    const { data, error } = await readJson(request);
-    if (error) return error;
-    const res = await runChat(env, env.DB, data);
-    return json(res.body, res.status);
-  }
   if (url.pathname === '/api/docs' || url.pathname.startsWith('/api/docs/')) return handleDocs(request, env, url);
   return json({ error: 'Nicht gefunden' }, 404);
 }

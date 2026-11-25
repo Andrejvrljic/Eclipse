@@ -495,46 +495,6 @@ table.tbl{width:100%;border-collapse:collapse;min-width:980px}
 .toast.ok .ic{color:var(--ok)} .toast.warn .ic{color:var(--warn)} .toast.crit .ic{color:var(--crit)} .toast.info .ic{color:var(--info)}
 .toast.crit{border-color:rgba(239,68,68,.35)}
 
-/* ---------- KI-Assistent ---------- */
-.ai-fab{position:fixed;z-index:70;right:max(20px,calc(env(safe-area-inset-right,0px) + 12px));bottom:calc(20px + env(safe-area-inset-bottom,0px));display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 18px 0 14px;border-radius:99px;border:1px solid rgba(167,139,250,.45);background:linear-gradient(180deg,#8B5CF6,#7C3AED);color:#fff;font-weight:600;box-shadow:0 10px 30px -8px var(--glow),0 0 0 1px rgba(124,58,237,.2);transition:transform var(--t) var(--ease),box-shadow var(--t) var(--ease)}
-.ai-fab:hover{transform:translateY(-1px);box-shadow:0 14px 36px -8px var(--glow),0 0 0 1px rgba(167,139,250,.4)}
-.ai-fab .ic{width:20px;height:20px}
-body.ai-open .ai-fab{display:none}
-body.has-ai .toasts{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
-body.ai-open .toasts{right:calc(min(440px,100vw) + 16px)}
-@media (max-width:767px){body.ai-open .toasts{right:16px;bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
-.ai-panel{position:fixed;z-index:80;top:0;right:0;bottom:0;width:min(440px,100vw);display:flex;flex-direction:column;background:var(--panel);border-left:1px solid var(--line-2);box-shadow:-24px 0 60px rgba(0,0,0,.5);
-  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) 0;animation:slidein 220ms var(--ease)}
-@keyframes slidein{from{transform:translateX(24px);opacity:0}}
-.ai-head{display:flex;align-items:center;gap:10px;padding:12px 10px 12px 18px;border-bottom:1px solid var(--line)}
-.ai-head .ai-badge{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--accent-soft);border:1px solid rgba(167,139,250,.3);color:var(--accent-2)}
-.ai-head h2{font-size:15px;line-height:1.2}
-.ai-head p{font-size:11.5px;color:var(--muted);font-family:var(--fm)}
-.ai-head .sp{flex:1}
-.ai-head .icon-btn{width:40px;height:40px}
-.ai-log{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;overscroll-behavior:contain}
-.ai-msg{max-width:92%;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.55;overflow-wrap:anywhere}
-.ai-msg.user{align-self:flex-end;background:rgba(124,58,237,.18);border:1px solid rgba(167,139,250,.28);border-bottom-right-radius:4px}
-.ai-msg.assistant{align-self:flex-start;background:var(--panel-2);border:1px solid var(--line-2);border-bottom-left-radius:4px}
-.ai-msg.error{align-self:stretch;max-width:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#FCA5A5;font-size:13px}
-.ai-changes{display:flex;flex-direction:column;gap:4px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
-.ai-change{display:flex;gap:6px;align-items:baseline;font-size:12px;color:var(--muted)}
-.ai-change .ic{width:12px;height:12px;color:var(--ok);flex:none;transform:translateY(2px)}
-.ai-change b{color:var(--text);font-weight:500}
-.ai-typing{align-self:flex-start;display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line-2);font-size:13px;color:var(--muted)}
-.ai-typing i{width:7px;height:7px;border-radius:50%;background:var(--accent-2);animation:pulse 1s ease-in-out infinite}
-.ai-typing i:nth-child(2){animation-delay:.15s}.ai-typing i:nth-child(3){animation-delay:.3s}
-.ai-intro{display:flex;flex-direction:column;gap:10px;color:var(--muted);font-size:13.5px}
-.ai-intro h3{color:var(--text);font-size:16px}
-.ai-ex{display:flex;flex-direction:column;gap:8px;margin-top:6px}
-.ai-ex button{text-align:left;padding:10px 12px;min-height:44px;border-radius:9px;border:1px solid var(--line-2);background:var(--panel-2);font-size:13px;color:var(--text);transition:border-color var(--t) var(--ease),background var(--t) var(--ease)}
-.ai-ex button:hover{border-color:rgba(167,139,250,.5);background:#1b1b23}
-.ai-form{display:flex;gap:8px;align-items:flex-end;padding:12px;border-top:1px solid var(--line)}
-.ai-form textarea{flex:1;min-height:48px;max-height:160px;resize:none;padding:12px 14px;border-radius:10px;border:1px solid var(--line-2);background:var(--input);outline:none;line-height:1.45;font-size:16px}
-.ai-form textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.ai-form .btn{min-height:48px;width:48px;padding:0}
-@media (max-width:767px){.ai-panel{width:100vw;border-left:0}.ai-fab .lbl{display:none}.ai-fab{padding:0;width:52px;justify-content:center}}
-
 /* ---------- Responsive ---------- */
 @media (max-width:1279px){
   .sidebar{width:var(--rail);padding-left:calc(10px + env(safe-area-inset-left,0px));padding-right:10px}
@@ -653,23 +613,6 @@ body.ai-open .toasts{right:calc(min(440px,100vw) + 16px)}
   <main class="view" id="view" aria-live="polite"></main>
 </div>
 
-<button class="ai-fab" id="ai-fab" data-act="ai-open" hidden aria-label="KI-Assistent öffnen"></button>
-<aside class="ai-panel" id="ai-panel" hidden aria-label="KI-Assistent">
-  <div class="ai-head">
-    <span class="ai-badge" id="ai-badge"></span>
-    <div><h2>KI-Assistent</h2><p>Admin · Claude</p></div>
-    <span class="sp"></span>
-    <button class="icon-btn" data-act="ai-new" title="Neuer Chat" aria-label="Neuer Chat" id="ai-new-btn"></button>
-    <button class="icon-btn" data-act="ai-logout" title="Admin abmelden" aria-label="Admin abmelden" id="ai-logout-btn"></button>
-    <button class="icon-btn" data-act="ai-close" title="Schließen" aria-label="Schließen" id="ai-close-btn"></button>
-  </div>
-  <div class="ai-log" id="ai-log" aria-live="polite"></div>
-  <form class="ai-form" id="ai-form" autocomplete="off">
-    <label class="sr" for="ai-input">Nachricht an den KI-Assistenten</label>
-    <textarea id="ai-input" rows="1" placeholder="Was soll ich erledigen?" maxlength="4000"></textarea>
-    <button class="btn btn-primary" type="submit" id="ai-send" aria-label="Senden"></button>
-  </form>
-</aside>
 <div id="modals"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
@@ -753,10 +696,6 @@ const ICONS = {
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
   sort: '<path d="M8 4v16M4 8l4-4 4 4M16 20V4M12 16l4 4 4-4"/>',
   user: '<circle cx="12" cy="8" r="3.6"/><path d="M4.8 20c.9-3.8 3.7-6 7.2-6s6.3 2.2 7.2 6"/>',
-  spark: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
-  send: '<path d="M4 12l16-8-6 16-2.5-6.5z"/><path d="M11.5 13.5L20 4"/>',
-  logout: '<path d="M14 4h4.5A1.5 1.5 0 0120 5.5v13a1.5 1.5 0 01-1.5 1.5H14"/><path d="M10 16l-4-4 4-4M6 12h10"/>',
-  refresh: '<path d="M20 11a8 8 0 00-14.6-4.5M4 13a8 8 0 0014.6 4.5"/><path d="M5 3v4h4M19 21v-4h-4"/>',
   compass: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/>',
   ruler: '<path d="M3.5 16.5L16.5 3.5l4 4-13 13z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/>',
   cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
@@ -1006,8 +945,6 @@ async function restDb() {
     try { await req(method, `${BASE}/${encodeURIComponent(c)}/${encodeURIComponent(id)}`, method === 'DELETE' ? null : body); }
     catch (e) { if (prev === undefined) delete m[id]; else m[id] = prev; throw e; }
   };
-  meta.rest = true;
-  meta.restRefresh = () => { if (first) loop(); };
   const coll = (c, q = {}) => ({
     orderBy: (f, dir) => coll(c, { ...q, order: [f, dir] }),
     limit: (n) => coll(c, { ...q, lim: n }),
@@ -1027,7 +964,6 @@ async function connect() {
     updateSync(); renderBanner(); scheduleRender(); return;
   }
   meta.db = db;
-  if (meta.rest) setupAi();
   COLLS.forEach((c) => {
     let q = db.collection(c);
     if (c === 'activity') q = q.orderBy('timestamp', 'desc').limit(500);
@@ -1117,7 +1053,10 @@ function renderChrome() {
   const open = tasks().filter((t) => !isDone(t)).length;
   const navHtml = NAV.map(([g, items]) => `<div class="nav-group"><span>${esc(g)}</span></div>` + items.map(([k, l]) =>
     `<a href="#${k}" class="${r === k ? 'active' : ''}" data-tip="${esc(l)}" ${r === k ? 'aria-current="page"' : ''}>${ic(k)}<span class="lbl">${esc(l)}</span>${k === 'aufgaben' && ready() ? `<span class="count">${open}</span>` : ''}</a>`).join('')).join('');
-  const nav = $('#nav'); if (nav.innerHTML !== navHtml) nav.innerHTML = navHtml;
+  // Link zum Spiel, wenn das Dashboard unter eclipse.<subdomain>.workers.dev läuft
+  const gameUrl = location.hostname.startsWith('eclipse.') ? location.origin.replace('//eclipse.', '//spiel.') : '';
+  const navFull = navHtml + (gameUrl ? `<div class="nav-group"><span>Spiel</span></div><a href="${esc(gameUrl)}" target="_blank" rel="noopener" data-tip="Spiel öffnen">${ic('cube')}<span class="lbl">Spiel öffnen</span></a>` : '');
+  const nav = $('#nav'); if (nav.innerHTML !== navFull) nav.innerHTML = navFull;
   const me = S.developers[meId()];
   const prof = me
     ? `${avatar(me)}<span class="profile-txt"><span class="profile-name">${esc(me.name)}</span><span class="profile-role" style="display:block">${esc(me.role || '')}</span></span>${ic('swap')}`
@@ -1903,103 +1842,6 @@ function pickMe(force = false) {
   });
   void force;
 }
-/* =========================================================
-   KI-Assistent (nur Admin, nur mit eigener Server-API)
-   ========================================================= */
-const AI = { msgs: [], busy: false, status: null };
-const AI_EXAMPLES = [
-  'Welche kritischen Aufgaben sind noch offen?',
-  'Setz ECL-009 auf Priorität Hoch und gib sie Entwickler 1.',
-  'Leg eine Aufgabe „Sound-System planen“ im Bereich Game Design in Phase 2 an.',
-  'Was hat Entwickler 2 heute erledigt?',
-];
-const aiHeaders = () => ({ 'content-type': 'application/json', 'x-admin-key': ls.get('adminKey') || '', 'x-team-key': ls.get('teamKey') || '' });
-async function setupAi() {
-  if (!meta.rest) return;
-  try {
-    const r = await fetch('api/status', { cache: 'no-store', headers: { 'x-team-key': ls.get('teamKey') || '' } });
-    if (r.ok) AI.status = await r.json();
-  } catch { /* Knopf trotzdem zeigen; Fehler erscheinen beim Öffnen */ }
-  $('#ai-fab').innerHTML = ic('spark') + '<span class="lbl">KI-Assistent</span>';
-  $('#ai-badge').innerHTML = ic('spark');
-  $('#ai-new-btn').innerHTML = ic('refresh');
-  $('#ai-logout-btn').innerHTML = ic('logout');
-  $('#ai-close-btn').innerHTML = ic('x');
-  $('#ai-send').innerHTML = ic('send');
-  $('#ai-fab').hidden = false;
-  document.body.classList.add('has-ai');
-  const input = $('#ai-input');
-  $('#ai-form').addEventListener('submit', (e) => { e.preventDefault(); aiSend(input.value); });
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); aiSend(input.value); } });
-  input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = Math.min(160, input.scrollHeight) + 'px'; });
-}
-function aiOpen() {
-  if (AI.status && !AI.status.admin) { toast('Der KI-Assistent ist noch nicht eingerichtet: Im GitHub-Repository fehlt das Secret ADMIN_KEY.', 'warn'); return; }
-  if (!ls.get('adminKey')) { aiLogin(); return; }
-  $('#ai-panel').hidden = false; document.body.classList.add('ai-open');
-  aiRender();
-  setTimeout(() => $('#ai-input').focus({ preventScroll: true }), 60);
-}
-function aiClose() { $('#ai-panel').hidden = true; document.body.classList.remove('ai-open'); $('#ai-fab').focus({ preventScroll: true }); }
-function aiLogin(message) {
-  openForm({
-    title: 'Admin-Anmeldung', submitLabel: 'Anmelden',
-    fields: [{ k: 'key', label: 'Admin-Passwort', req: true, max: 200, type: 'password', hint: (message ? message + ' ' : '') + 'Nur der Admin darf mit dem KI-Assistenten Änderungen machen. Das Passwort wird nur in diesem Browser gespeichert.' }],
-    values: { key: '' },
-    onSubmit: async (v) => {
-      let r;
-      try { r = await fetch('api/admin/check', { method: 'POST', cache: 'no-store', headers: { ...aiHeaders(), 'x-admin-key': v.key } }); }
-      catch { toast('Keine Verbindung zum Server. Versuch es gleich noch einmal.', 'crit'); return false; }
-      const body = await r.json().catch(() => ({}));
-      if (!r.ok) { toast(body.error || 'Anmeldung fehlgeschlagen.', 'crit'); return false; }
-      ls.set('adminKey', v.key);
-      if (AI.status) AI.status.ai = !!body.ai;
-      setTimeout(aiOpen, 50);
-      return true;
-    },
-  });
-}
-function aiLogout() { ls.set('adminKey', ''); AI.msgs = []; aiClose(); toast('Admin abgemeldet.', 'info'); }
-function aiRender() {
-  const log = $('#ai-log');
-  let html = '';
-  if (!AI.msgs.length) {
-    html = `<div class="ai-intro"><h3>Was soll ich erledigen?</h3><p>Ich kann Aufgaben, Phasen, Projekt, Entwickler, Bereiche, Dokumente und Dateien lesen und ändern. Jede Änderung erscheint sofort im Dashboard und im Aktivitätslog.</p>${AI.status && !AI.status.ai ? '<p style="color:#FBBF24">Hinweis: Im GitHub-Repository fehlt noch das Secret ANTHROPIC_API_KEY. Ohne den Schlüssel kann ich nicht antworten.</p>' : ''}<div class="ai-ex">${AI_EXAMPLES.map((x, i) => `<button type="button" data-act="ai-example" data-k="${i}">${esc(x)}</button>`).join('')}</div></div>`;
-  }
-  html += AI.msgs.map((m) => {
-    const body = esc(m.content).replace(/\n/g, '<br>');
-    const ch = (m.changes || []).length ? `<div class="ai-changes">${m.changes.map((c) => `<div class="ai-change">${ic('check')}<span><b>${esc(c.title || c.id)}</b> ${esc(c.action)}</span></div>`).join('')}</div>` : '';
-    return `<div class="ai-msg ${m.role}"${m.failed ? ' style="opacity:.6"' : ''}>${body}${ch}</div>`;
-  }).join('');
-  if (AI.busy) html += '<div class="ai-typing"><i></i><i></i><i></i>Claude arbeitet …</div>';
-  log.innerHTML = html;
-  log.scrollTop = log.scrollHeight;
-  $('#ai-send').disabled = AI.busy;
-}
-async function aiSend(text) {
-  text = String(text || '').trim();
-  if (!text || AI.busy) return;
-  $('#ai-input').value = ''; $('#ai-input').style.height = 'auto';
-  AI.msgs.push({ role: 'user', content: text });
-  AI.busy = true; aiRender();
-  const history = AI.msgs.filter((m) => (m.role === 'user' || m.role === 'assistant') && !m.failed).map((m) => ({ role: m.role, content: m.content }));
-  let body = {}, status = 0;
-  try {
-    const r = await fetch('api/chat', { method: 'POST', cache: 'no-store', headers: aiHeaders(), body: JSON.stringify({ messages: history, actor: actorName() }) });
-    status = r.status; body = await r.json().catch(() => ({}));
-  } catch { body = { error: 'Keine Verbindung zum Server. Versuch es gleich noch einmal.' }; }
-  AI.busy = false;
-  if (status === 200) AI.msgs.push({ role: 'assistant', content: body.reply || 'Erledigt.', changes: body.changes || [] });
-  else {
-    // Die unbeantwortete Nachricht bleibt sichtbar, wird aber nicht erneut an die KI geschickt.
-    const last = AI.msgs[AI.msgs.length - 1]; if (last && last.role === 'user') last.failed = true;
-    AI.msgs.push({ role: 'error', content: body.error || 'Die Anfrage ist fehlgeschlagen.', changes: body.changes || [] });
-    if (status === 401 && body.code === 'admin_wrong') { ls.set('adminKey', ''); aiClose(); aiLogin('Das gespeicherte Passwort ist nicht mehr gültig.'); }
-  }
-  aiRender();
-  if ((body.changes || []).length && meta.restRefresh) { meta.restRefresh(); toast(`${body.changes.length} ${body.changes.length === 1 ? 'Änderung' : 'Änderungen'} durch den KI-Assistenten gespeichert.`); }
-}
-
 function maybeAskIdentity() {
   if (meta.askedMe || !ready() || meId() || !devs().length || modalStack.length) return;
   meta.askedMe = true; pickMe(true);
@@ -2117,11 +1959,6 @@ const ACTIONS = {
   'tech-filter': (id, el) => { UI.tech = UI.tech === el.dataset.k ? '' : el.dataset.k; scheduleRender(); },
   'act-reset': () => { UI.act = { actor: '', type: '' }; scheduleRender(); },
   'pick-me': () => pickMe(),
-  'ai-open': () => aiOpen(),
-  'ai-close': () => aiClose(),
-  'ai-new': () => { AI.msgs = []; aiRender(); $('#ai-input').focus(); },
-  'ai-logout': () => aiLogout(),
-  'ai-example': (id, el) => aiSend(AI_EXAMPLES[+el.dataset.k]),
   'nav-open': () => document.body.classList.add('nav-open'),
   'nav-close': () => document.body.classList.remove('nav-open'),
 };
@@ -2145,7 +1982,6 @@ document.addEventListener('change', (e) => { const el = e.target.closest('[data-
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (modalStack.length) { modalStack[modalStack.length - 1](); return; }
-    if (!$('#ai-panel').hidden) { aiClose(); return; }
     if (!$('#search-pop').hidden) { closeSearch(); $('#q').blur(); return; }
     document.body.classList.remove('nav-open');
   }

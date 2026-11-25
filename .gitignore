@@ -1,6 +1,8 @@
 seed/writes.json
 public/
+game/dist/
 .wrangler/
+game/.wrangler/
 node_modules/
 wrangler.local.toml
 .dev.vars

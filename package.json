@@ -1,12 +1,17 @@
 {
-  "name": "eclipse-dev-platform",
+  "name": "eclipse",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "dev": "node scripts/build.mjs && wrangler dev"
+    "build": "node scripts/build.mjs && node game/build.mjs",
+    "dev:dashboard": "node scripts/build.mjs && wrangler dev",
+    "dev:game": "node game/build.mjs && wrangler dev -c game/wrangler.toml"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "1.14.0"
+    "@dimforge/rapier3d-compat": "0.21.0",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }

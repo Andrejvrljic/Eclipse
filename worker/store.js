@@ -1,4 +1,4 @@
-// Gemeinsamer Datenzugriff (D1) für die Website-API und den KI-Assistenten.
+// Gemeinsamer Datenzugriff (D1) für die Website-API.
 import seed from '../seed/startdaten.json';
 
 export const COLLS = ['project', 'phases', 'tasks', 'developers', 'areas', 'techdocs', 'files', 'activity'];
