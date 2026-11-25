@@ -1,0 +1,9 @@
+{
+  "number": 1,
+  "name": "Technische Grundlage",
+  "description": "Projektstruktur, Build-Setup, Konventionen und das erste Game Design Document.",
+  "status": "Abgeschlossen",
+  "progress": 100,
+  "color": "#C4B5FD",
+  "order": 1
+}

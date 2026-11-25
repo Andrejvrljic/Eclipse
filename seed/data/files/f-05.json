@@ -1,0 +1,9 @@
+{
+  "name": "controls.js",
+  "type": "JavaScript",
+  "path": "client/src/input/",
+  "category": "Client",
+  "description": "Aktionsbasiertes Input-Mapping",
+  "updated_by": "Startdaten",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

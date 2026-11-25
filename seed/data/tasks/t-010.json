@@ -1,0 +1,19 @@
+{
+  "key": "ECL-010",
+  "title": "Input-System für Tastatur, Maus und Gamepad",
+  "description": "Aktionsbasiertes Mapping, Pointer Lock und Gamepad-API mit Deadzones.",
+  "phase": "phase-2",
+  "area": "spielmechaniken",
+  "assignee": "dev-2",
+  "status": "In Arbeit",
+  "priority": "Hoch",
+  "progress": 30,
+  "estimate_hours": 8,
+  "due_date": "2026-12-02",
+  "tags": [
+    "input"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

@@ -1,0 +1,20 @@
+{
+  "key": "ECL-002",
+  "title": "Build-Setup mit Vite und ES-Modulen",
+  "description": "Dev-Server mit Hot Reload für den Client, Produktions-Build und Alias auf shared/.",
+  "phase": "phase-1",
+  "area": "technische-planung",
+  "assignee": "dev-1",
+  "status": "Erledigt",
+  "priority": "Hoch",
+  "progress": 100,
+  "estimate_hours": 6,
+  "due_date": "2026-09-15",
+  "tags": [
+    "build",
+    "vite"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

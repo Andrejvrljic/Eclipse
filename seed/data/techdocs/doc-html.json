@@ -1,0 +1,9 @@
+{
+  "title": "Einstiegsseite & Canvas-Container",
+  "category": "Architektur",
+  "tech": "HTML",
+  "description": "Aufbau von client/index.html: Canvas, HUD-Layer, Ladebildschirm.",
+  "status": "Aktuell",
+  "link": "https://developer.mozilla.org/de/docs/Web/HTML",
+  "notes": "Canvas füllt den Viewport, HUD liegt als DOM-Ebene darüber."
+}

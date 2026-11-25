@@ -1,0 +1,9 @@
+{
+  "title": "Event-Katalog & Tickrate",
+  "category": "Referenz",
+  "tech": "Socket.IO",
+  "description": "Alle Netzwerk-Events mit Richtung, Payload und Frequenz.",
+  "status": "Entwurf",
+  "link": "https://socket.io/docs/v4/",
+  "notes": "Server-Tick 20 Hz, Client-Eingaben 60 Hz gebündelt."
+}

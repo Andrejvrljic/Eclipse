@@ -1,0 +1,12 @@
+{
+  "name": "ECLIPSE",
+  "codename": "UMBRA",
+  "description": "Browserbasiertes 3D-Open-World-Multiplayer-Spiel: Erkunden, Fahren, Sammeln, Craften und Basen bauen in einer persistenten, gemeinsamen Welt.",
+  "status": "In Entwicklung",
+  "current_phase": "phase-2",
+  "start_date": "2026-09-01",
+  "target_date": "2028-03-31",
+  "version": "0.2.0-alpha",
+  "genre": "Open World · Survival · Multiplayer",
+  "engine_notes": "Rendering mit Three.js (WebGL2), Physik mit Rapier.js (WASM), autoritativer Spielserver auf Node.js mit Socket.IO. Gemeinsame Typen und Konstanten liegen in shared/."
+}

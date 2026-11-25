@@ -1,0 +1,8 @@
+{
+  "name": "Levelsystem",
+  "slug": "levelsystem",
+  "icon": "levels",
+  "description": "Erfahrungspunkte, Levelkurve, Freischaltungen und Fähigkeiten.",
+  "progress": 0,
+  "order": 11
+}

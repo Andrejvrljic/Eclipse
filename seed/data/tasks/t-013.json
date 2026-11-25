@@ -1,0 +1,19 @@
+{
+  "key": "ECL-013",
+  "title": "Client-Prediction & Server-Reconciliation",
+  "description": "Eingaben puffern, lokal vorhersagen und mit autoritativem Serverstand abgleichen.",
+  "phase": "phase-3",
+  "area": "multiplayer",
+  "assignee": "dev-1",
+  "status": "Backlog",
+  "priority": "Hoch",
+  "progress": 0,
+  "estimate_hours": 20,
+  "due_date": "2027-02-12",
+  "tags": [
+    "netcode"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

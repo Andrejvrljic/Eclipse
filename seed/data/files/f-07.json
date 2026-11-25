@@ -1,0 +1,9 @@
+{
+  "name": "index.js",
+  "type": "JavaScript",
+  "path": "server/",
+  "category": "Server",
+  "description": "HTTP- und Socket.IO-Server",
+  "updated_by": "Startdaten",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

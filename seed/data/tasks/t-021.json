@@ -1,0 +1,19 @@
+{
+  "key": "ECL-021",
+  "title": "Basenbau: Grid-Platzierung & Snapping",
+  "description": "Bauteile auf Raster platzieren, Snapping an Kanten, Vorschau und Kollisionsprüfung.",
+  "phase": "phase-5",
+  "area": "basenbau",
+  "assignee": "dev-1",
+  "status": "Backlog",
+  "priority": "Hoch",
+  "progress": 0,
+  "estimate_hours": 16,
+  "due_date": "2027-08-20",
+  "tags": [
+    "bauen"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

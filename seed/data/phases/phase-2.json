@@ -1,0 +1,9 @@
+{
+  "number": 2,
+  "name": "3D-Prototyp",
+  "description": "Spielbare Szene mit Renderer, Physik, Charaktersteuerung, Terrain und erstem Fahrzeug.",
+  "status": "Aktiv",
+  "progress": 45,
+  "color": "#A78BFA",
+  "order": 2
+}

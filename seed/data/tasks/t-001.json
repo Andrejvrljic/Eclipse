@@ -1,0 +1,19 @@
+{
+  "key": "ECL-001",
+  "title": "Projektstruktur client/server/shared anlegen",
+  "description": "Monorepo-Ordner, npm-Workspaces und gemeinsame Skripte für Client und Server einrichten.",
+  "phase": "phase-1",
+  "area": "technische-planung",
+  "assignee": "dev-1",
+  "status": "Erledigt",
+  "priority": "Mittel",
+  "progress": 100,
+  "estimate_hours": 4,
+  "due_date": "2026-09-08",
+  "tags": [
+    "setup"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

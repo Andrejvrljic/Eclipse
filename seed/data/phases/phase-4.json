@@ -1,0 +1,9 @@
+{
+  "number": 4,
+  "name": "Spielwelt",
+  "description": "Größere Karte mit Chunk-Streaming, Beleuchtung, Tag-Nacht-Zyklus und Umgebungsdetails.",
+  "status": "Ausstehend",
+  "progress": 0,
+  "color": "#818CF8",
+  "order": 4
+}

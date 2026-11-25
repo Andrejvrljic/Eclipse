@@ -1,0 +1,8 @@
+{
+  "name": "Fahrzeuge",
+  "slug": "fahrzeuge",
+  "icon": "wheel",
+  "description": "Fahrphysik, Fahrzeugtypen, Ein- und Aussteigen, Schäden.",
+  "progress": 0,
+  "order": 6
+}

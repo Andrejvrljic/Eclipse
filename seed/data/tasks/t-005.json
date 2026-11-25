@@ -1,0 +1,20 @@
+{
+  "key": "ECL-005",
+  "title": "Three.js Renderer, Kamera & Game-Loop",
+  "description": "WebGL2-Renderer, Resize-Handling, fester Physik-Tick und variabler Render-Schritt.",
+  "phase": "phase-2",
+  "area": "3d-welt",
+  "assignee": "dev-1",
+  "status": "Erledigt",
+  "priority": "Kritisch",
+  "progress": 100,
+  "estimate_hours": 10,
+  "due_date": "2026-10-20",
+  "tags": [
+    "three.js",
+    "core"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

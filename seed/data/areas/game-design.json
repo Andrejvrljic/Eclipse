@@ -1,0 +1,8 @@
+{
+  "name": "Game Design",
+  "slug": "game-design",
+  "icon": "compass",
+  "description": "Vision, Kern-Loop, Spielerziele und das Game Design Document.",
+  "progress": 60,
+  "order": 1
+}

@@ -1,0 +1,9 @@
+{
+  "name": "scene.js",
+  "type": "JavaScript",
+  "path": "client/src/render/",
+  "category": "Client",
+  "description": "Renderer, Kamera und Szene",
+  "updated_by": "Startdaten",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "hud.css",
+  "type": "CSS",
+  "path": "client/styles/",
+  "category": "Client",
+  "description": "HUD- und Menü-Styles",
+  "updated_by": "Startdaten",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

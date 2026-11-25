@@ -1,0 +1,20 @@
+{
+  "key": "ECL-006",
+  "title": "Rapier.js Physik-Welt integrieren",
+  "description": "WASM laden, Physik-Welt mit 60 Hz takten, Kollisionsgruppen und Debug-Renderer.",
+  "phase": "phase-2",
+  "area": "spielmechaniken",
+  "assignee": "dev-1",
+  "status": "In Arbeit",
+  "priority": "Kritisch",
+  "progress": 60,
+  "estimate_hours": 14,
+  "due_date": "2026-12-04",
+  "tags": [
+    "rapier",
+    "physik"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

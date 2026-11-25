@@ -1,0 +1,20 @@
+{
+  "key": "ECL-022",
+  "title": "Biome & Points of Interest planen",
+  "description": "Biome, Ressourcenverteilung und interessante Orte für die große Karte festlegen.",
+  "phase": "phase-6",
+  "area": "game-design",
+  "assignee": "dev-2",
+  "status": "Backlog",
+  "priority": "Niedrig",
+  "progress": 0,
+  "estimate_hours": 8,
+  "due_date": "2027-10-01",
+  "tags": [
+    "welt",
+    "planung"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

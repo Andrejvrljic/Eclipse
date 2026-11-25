@@ -1,0 +1,19 @@
+{
+  "key": "ECL-003",
+  "title": "Game Design Document v1",
+  "description": "Vision, Kern-Loop, Zielgruppe, Steuerung und Abgrenzung der ersten spielbaren Version.",
+  "phase": "phase-1",
+  "area": "game-design",
+  "assignee": "dev-2",
+  "status": "Erledigt",
+  "priority": "Hoch",
+  "progress": 100,
+  "estimate_hours": 12,
+  "due_date": "2026-09-30",
+  "tags": [
+    "gdd"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

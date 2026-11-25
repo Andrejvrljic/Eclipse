@@ -1,0 +1,19 @@
+{
+  "key": "ECL-019",
+  "title": "Quest-System mit Zielen & Belohnungen",
+  "description": "Questdefinitionen, Zieltypen (sammeln, erreichen, besiegen) und Belohnungen.",
+  "phase": "phase-5",
+  "area": "quests",
+  "assignee": "dev-2",
+  "status": "Backlog",
+  "priority": "Mittel",
+  "progress": 0,
+  "estimate_hours": 14,
+  "due_date": "2027-07-16",
+  "tags": [
+    "quests"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

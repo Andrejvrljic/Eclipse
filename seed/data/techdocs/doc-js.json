@@ -1,0 +1,9 @@
+{
+  "title": "Modulstruktur & ES2022",
+  "category": "Leitfaden",
+  "tech": "JavaScript",
+  "description": "Wie Module geschnitten werden, Import-Regeln und Umgang mit shared/.",
+  "status": "Aktuell",
+  "link": "https://developer.mozilla.org/de/docs/Web/JavaScript",
+  "notes": "Keine zirkulären Imports zwischen render/ und physics/."
+}

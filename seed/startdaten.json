@@ -1,0 +1,832 @@
+{
+  "project": {
+    "eclipse": {
+      "name": "ECLIPSE",
+      "codename": "UMBRA",
+      "description": "Browserbasiertes 3D-Open-World-Multiplayer-Spiel: Erkunden, Fahren, Sammeln, Craften und Basen bauen in einer persistenten, gemeinsamen Welt.",
+      "status": "In Entwicklung",
+      "current_phase": "phase-2",
+      "start_date": "2026-09-01",
+      "target_date": "2028-03-31",
+      "version": "0.2.0-alpha",
+      "genre": "Open World · Survival · Multiplayer",
+      "engine_notes": "Rendering mit Three.js (WebGL2), Physik mit Rapier.js (WASM), autoritativer Spielserver auf Node.js mit Socket.IO. Gemeinsame Typen und Konstanten liegen in shared/."
+    }
+  },
+  "phases": {
+    "phase-1": {
+      "number": 1,
+      "name": "Technische Grundlage",
+      "description": "Projektstruktur, Build-Setup, Konventionen und das erste Game Design Document.",
+      "status": "Abgeschlossen",
+      "progress": 100,
+      "color": "#C4B5FD",
+      "order": 1
+    },
+    "phase-2": {
+      "number": 2,
+      "name": "3D-Prototyp",
+      "description": "Spielbare Szene mit Renderer, Physik, Charaktersteuerung, Terrain und erstem Fahrzeug.",
+      "status": "Aktiv",
+      "progress": 45,
+      "color": "#A78BFA",
+      "order": 2
+    },
+    "phase-3": {
+      "number": 3,
+      "name": "Multiplayer",
+      "description": "Autoritativer Server, Räume, Netzwerkprotokoll, Client-Prediction und Synchronisation.",
+      "status": "Ausstehend",
+      "progress": 3,
+      "color": "#8B5CF6",
+      "order": 3
+    },
+    "phase-4": {
+      "number": 4,
+      "name": "Spielwelt",
+      "description": "Größere Karte mit Chunk-Streaming, Beleuchtung, Tag-Nacht-Zyklus und Umgebungsdetails.",
+      "status": "Ausstehend",
+      "progress": 0,
+      "color": "#818CF8",
+      "order": 4
+    },
+    "phase-5": {
+      "number": 5,
+      "name": "Spielsysteme",
+      "description": "Inventar, Crafting, Quests, Levelsystem und Basenbau als zusammenhängender Gameplay-Loop.",
+      "status": "Ausstehend",
+      "progress": 0,
+      "color": "#60A5FA",
+      "order": 5
+    },
+    "phase-6": {
+      "number": 6,
+      "name": "Große Open World",
+      "description": "Mehrere Biome, Points of Interest, Performance-Feinschliff und Vorbereitung auf den Release.",
+      "status": "Ausstehend",
+      "progress": 0,
+      "color": "#38BDF8",
+      "order": 6
+    }
+  },
+  "developers": {
+    "dev-1": {
+      "name": "Entwickler 1",
+      "role": "Lead Developer · Engine & Netzwerk",
+      "avatar_initials": "E1",
+      "color": "#A78BFA",
+      "focus_area": "Technische Planung, 3D-Welt, Multiplayer",
+      "online_status": "Online",
+      "order": 1
+    },
+    "dev-2": {
+      "name": "Entwickler 2",
+      "role": "Gameplay Developer",
+      "avatar_initials": "E2",
+      "color": "#38BDF8",
+      "focus_area": "Spielmechaniken, Charaktere, Fahrzeuge, Spielsysteme",
+      "online_status": "Online",
+      "order": 2
+    }
+  },
+  "areas": {
+    "game-design": {
+      "name": "Game Design",
+      "slug": "game-design",
+      "icon": "compass",
+      "description": "Vision, Kern-Loop, Spielerziele und das Game Design Document.",
+      "progress": 60,
+      "order": 1
+    },
+    "technische-planung": {
+      "name": "Technische Planung",
+      "slug": "technische-planung",
+      "icon": "ruler",
+      "description": "Architektur, Projektstruktur, Build-Pipeline und Konventionen.",
+      "progress": 100,
+      "order": 2
+    },
+    "spielmechaniken": {
+      "name": "Spielmechaniken",
+      "slug": "spielmechaniken",
+      "icon": "cog",
+      "description": "Physik, Eingabe, Interaktionen und das Grundgefühl der Steuerung.",
+      "progress": 49,
+      "order": 3
+    },
+    "3d-welt": {
+      "name": "3D-Welt",
+      "slug": "3d-welt",
+      "icon": "cube",
+      "description": "Renderer, Terrain, Assets, Beleuchtung und Streaming der Welt.",
+      "progress": 34,
+      "order": 4
+    },
+    "multiplayer": {
+      "name": "Multiplayer",
+      "slug": "multiplayer",
+      "icon": "network",
+      "description": "Server, Räume, Protokoll, Prediction und Synchronisation.",
+      "progress": 3,
+      "order": 5
+    },
+    "fahrzeuge": {
+      "name": "Fahrzeuge",
+      "slug": "fahrzeuge",
+      "icon": "wheel",
+      "description": "Fahrphysik, Fahrzeugtypen, Ein- und Aussteigen, Schäden.",
+      "progress": 0,
+      "order": 6
+    },
+    "charaktere": {
+      "name": "Charaktere",
+      "slug": "charaktere",
+      "icon": "person",
+      "description": "Spielerfigur, Animationen, Kamera und Charakter-Controller.",
+      "progress": 45,
+      "order": 7
+    },
+    "inventar": {
+      "name": "Inventar",
+      "slug": "inventar",
+      "icon": "slots",
+      "description": "Item-Datenmodell, Slots, Stapel, Ausrüstung und Inventar-UI.",
+      "progress": 0,
+      "order": 8
+    },
+    "crafting": {
+      "name": "Crafting",
+      "slug": "crafting",
+      "icon": "hammer",
+      "description": "Rezepte, Werkbänke, Ressourcen und Herstellungszeiten.",
+      "progress": 0,
+      "order": 9
+    },
+    "quests": {
+      "name": "Quests",
+      "slug": "quests",
+      "icon": "flag",
+      "description": "Questziele, Questketten, Belohnungen und Fortschrittsspeicherung.",
+      "progress": 0,
+      "order": 10
+    },
+    "levelsystem": {
+      "name": "Levelsystem",
+      "slug": "levelsystem",
+      "icon": "levels",
+      "description": "Erfahrungspunkte, Levelkurve, Freischaltungen und Fähigkeiten.",
+      "progress": 0,
+      "order": 11
+    },
+    "basenbau": {
+      "name": "Basenbau",
+      "slug": "basenbau",
+      "icon": "base",
+      "description": "Bauteile, Grid-Platzierung, Snapping, Stabilität und Besitzrechte.",
+      "progress": 0,
+      "order": 12
+    }
+  },
+  "tasks": {
+    "t-001": {
+      "key": "ECL-001",
+      "title": "Projektstruktur client/server/shared anlegen",
+      "description": "Monorepo-Ordner, npm-Workspaces und gemeinsame Skripte für Client und Server einrichten.",
+      "phase": "phase-1",
+      "area": "technische-planung",
+      "assignee": "dev-1",
+      "status": "Erledigt",
+      "priority": "Mittel",
+      "progress": 100,
+      "estimate_hours": 4,
+      "due_date": "2026-09-08",
+      "tags": [
+        "setup"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-002": {
+      "key": "ECL-002",
+      "title": "Build-Setup mit Vite und ES-Modulen",
+      "description": "Dev-Server mit Hot Reload für den Client, Produktions-Build und Alias auf shared/.",
+      "phase": "phase-1",
+      "area": "technische-planung",
+      "assignee": "dev-1",
+      "status": "Erledigt",
+      "priority": "Hoch",
+      "progress": 100,
+      "estimate_hours": 6,
+      "due_date": "2026-09-15",
+      "tags": [
+        "build",
+        "vite"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-003": {
+      "key": "ECL-003",
+      "title": "Game Design Document v1",
+      "description": "Vision, Kern-Loop, Zielgruppe, Steuerung und Abgrenzung der ersten spielbaren Version.",
+      "phase": "phase-1",
+      "area": "game-design",
+      "assignee": "dev-2",
+      "status": "Erledigt",
+      "priority": "Hoch",
+      "progress": 100,
+      "estimate_hours": 12,
+      "due_date": "2026-09-30",
+      "tags": [
+        "gdd"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-004": {
+      "key": "ECL-004",
+      "title": "Coding-Konventionen & Ordner-Doku",
+      "description": "ESLint/Prettier-Regeln, Benennung von Modulen und Aufbau von docs/ARCHITECTURE.md.",
+      "phase": "phase-1",
+      "area": "technische-planung",
+      "assignee": "dev-2",
+      "status": "Erledigt",
+      "priority": "Niedrig",
+      "progress": 100,
+      "estimate_hours": 3,
+      "due_date": "2026-10-05",
+      "tags": [
+        "docs"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-005": {
+      "key": "ECL-005",
+      "title": "Three.js Renderer, Kamera & Game-Loop",
+      "description": "WebGL2-Renderer, Resize-Handling, fester Physik-Tick und variabler Render-Schritt.",
+      "phase": "phase-2",
+      "area": "3d-welt",
+      "assignee": "dev-1",
+      "status": "Erledigt",
+      "priority": "Kritisch",
+      "progress": 100,
+      "estimate_hours": 10,
+      "due_date": "2026-10-20",
+      "tags": [
+        "three.js",
+        "core"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-006": {
+      "key": "ECL-006",
+      "title": "Rapier.js Physik-Welt integrieren",
+      "description": "WASM laden, Physik-Welt mit 60 Hz takten, Kollisionsgruppen und Debug-Renderer.",
+      "phase": "phase-2",
+      "area": "spielmechaniken",
+      "assignee": "dev-1",
+      "status": "In Arbeit",
+      "priority": "Kritisch",
+      "progress": 60,
+      "estimate_hours": 14,
+      "due_date": "2026-12-04",
+      "tags": [
+        "rapier",
+        "physik"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-007": {
+      "key": "ECL-007",
+      "title": "Third-Person-Charaktercontroller",
+      "description": "Kinematischer Controller mit Laufen, Springen, Hangneigung und Kamera-Kollision.",
+      "phase": "phase-2",
+      "area": "charaktere",
+      "assignee": "dev-2",
+      "status": "In Arbeit",
+      "priority": "Hoch",
+      "progress": 45,
+      "estimate_hours": 16,
+      "due_date": "2026-12-11",
+      "tags": [
+        "controller",
+        "kamera"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-008": {
+      "key": "ECL-008",
+      "title": "Terrain-Prototyp mit Heightmap",
+      "description": "Heightmap laden, Mesh erzeugen, Heightfield-Collider in Rapier und einfache Texturierung.",
+      "phase": "phase-2",
+      "area": "3d-welt",
+      "assignee": "dev-1",
+      "status": "Review",
+      "priority": "Hoch",
+      "progress": 85,
+      "estimate_hours": 12,
+      "due_date": "2026-11-28",
+      "tags": [
+        "terrain"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-009": {
+      "key": "ECL-009",
+      "title": "Fahrzeug-Prototyp mit Raycast-Rädern",
+      "description": "Erstes Buggy-Fahrzeug mit Raycast-Federung, Lenkung, Gas und Bremse.",
+      "phase": "phase-2",
+      "area": "fahrzeuge",
+      "assignee": "dev-2",
+      "status": "Backlog",
+      "priority": "Mittel",
+      "progress": 0,
+      "estimate_hours": 18,
+      "due_date": "2026-12-23",
+      "tags": [
+        "fahrphysik"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-010": {
+      "key": "ECL-010",
+      "title": "Input-System für Tastatur, Maus und Gamepad",
+      "description": "Aktionsbasiertes Mapping, Pointer Lock und Gamepad-API mit Deadzones.",
+      "phase": "phase-2",
+      "area": "spielmechaniken",
+      "assignee": "dev-2",
+      "status": "In Arbeit",
+      "priority": "Hoch",
+      "progress": 30,
+      "estimate_hours": 8,
+      "due_date": "2026-12-02",
+      "tags": [
+        "input"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-011": {
+      "key": "ECL-011",
+      "title": "GLTF-Asset-Pipeline & Kompression",
+      "description": "Draco/Meshopt-Kompression, KTX2-Texturen und ein Ladeskript mit Fortschrittsanzeige.",
+      "phase": "phase-2",
+      "area": "3d-welt",
+      "assignee": "dev-1",
+      "status": "Backlog",
+      "priority": "Mittel",
+      "progress": 0,
+      "estimate_hours": 6,
+      "due_date": "2026-12-18",
+      "tags": [
+        "assets",
+        "gltf"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-012": {
+      "key": "ECL-012",
+      "title": "Socket.IO-Server mit Raum-Verwaltung",
+      "description": "Verbindungsaufbau, Räume pro Welt-Instanz, Join/Leave und Heartbeat.",
+      "phase": "phase-3",
+      "area": "multiplayer",
+      "assignee": "dev-1",
+      "status": "Backlog",
+      "priority": "Kritisch",
+      "progress": 10,
+      "estimate_hours": 12,
+      "due_date": "2027-01-22",
+      "tags": [
+        "socket.io",
+        "server"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-013": {
+      "key": "ECL-013",
+      "title": "Client-Prediction & Server-Reconciliation",
+      "description": "Eingaben puffern, lokal vorhersagen und mit autoritativem Serverstand abgleichen.",
+      "phase": "phase-3",
+      "area": "multiplayer",
+      "assignee": "dev-1",
+      "status": "Backlog",
+      "priority": "Hoch",
+      "progress": 0,
+      "estimate_hours": 20,
+      "due_date": "2027-02-12",
+      "tags": [
+        "netcode"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-014": {
+      "key": "ECL-014",
+      "title": "Netzwerk-Protokoll in shared/ definieren",
+      "description": "Event-Namen, Payload-Formate und Versionsnummer zentral für Client und Server.",
+      "phase": "phase-3",
+      "area": "multiplayer",
+      "assignee": "dev-2",
+      "status": "Backlog",
+      "priority": "Mittel",
+      "progress": 0,
+      "estimate_hours": 6,
+      "due_date": "2027-01-15",
+      "tags": [
+        "protokoll"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-015": {
+      "key": "ECL-015",
+      "title": "Chunk-Streaming für große Karten",
+      "description": "Welt in Chunks teilen, nach Spielerposition laden und entladen, Collider mitführen.",
+      "phase": "phase-4",
+      "area": "3d-welt",
+      "assignee": "dev-1",
+      "status": "Backlog",
+      "priority": "Hoch",
+      "progress": 0,
+      "estimate_hours": 24,
+      "due_date": "2027-04-09",
+      "tags": [
+        "streaming",
+        "performance"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-016": {
+      "key": "ECL-016",
+      "title": "Tag-Nacht-Zyklus & Beleuchtung",
+      "description": "Sonnenstand, Himmelsfarbe, Schatten-Kaskaden und Lichtstimmung pro Tageszeit.",
+      "phase": "phase-4",
+      "area": "3d-welt",
+      "assignee": "dev-2",
+      "status": "Backlog",
+      "priority": "Niedrig",
+      "progress": 0,
+      "estimate_hours": 8,
+      "due_date": "2027-04-30",
+      "tags": [
+        "licht"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-017": {
+      "key": "ECL-017",
+      "title": "Inventar-Datenmodell & Slot-UI",
+      "description": "Items, Stapelgrößen, Gewicht, Slots und ein Inventar-Overlay im HUD.",
+      "phase": "phase-5",
+      "area": "inventar",
+      "assignee": "dev-2",
+      "status": "Backlog",
+      "priority": "Mittel",
+      "progress": 0,
+      "estimate_hours": 10,
+      "due_date": "2027-06-04",
+      "tags": [
+        "items",
+        "ui"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-018": {
+      "key": "ECL-018",
+      "title": "Crafting-Rezepte & Werkbank",
+      "description": "Rezeptformat, Werkbank-Interaktion und Herstellungszeiten mit Fortschritt.",
+      "phase": "phase-5",
+      "area": "crafting",
+      "assignee": "dev-2",
+      "status": "Backlog",
+      "priority": "Mittel",
+      "progress": 0,
+      "estimate_hours": 12,
+      "due_date": "2027-06-25",
+      "tags": [
+        "rezepte"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-019": {
+      "key": "ECL-019",
+      "title": "Quest-System mit Zielen & Belohnungen",
+      "description": "Questdefinitionen, Zieltypen (sammeln, erreichen, besiegen) und Belohnungen.",
+      "phase": "phase-5",
+      "area": "quests",
+      "assignee": "dev-2",
+      "status": "Backlog",
+      "priority": "Mittel",
+      "progress": 0,
+      "estimate_hours": 14,
+      "due_date": "2027-07-16",
+      "tags": [
+        "quests"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-020": {
+      "key": "ECL-020",
+      "title": "XP-Kurve & Levelaufstieg",
+      "description": "Erfahrungsquellen, Levelkurve und Freischaltungen pro Stufe.",
+      "phase": "phase-5",
+      "area": "levelsystem",
+      "assignee": "dev-1",
+      "status": "Backlog",
+      "priority": "Niedrig",
+      "progress": 0,
+      "estimate_hours": 6,
+      "due_date": "2027-07-30",
+      "tags": [
+        "balancing"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-021": {
+      "key": "ECL-021",
+      "title": "Basenbau: Grid-Platzierung & Snapping",
+      "description": "Bauteile auf Raster platzieren, Snapping an Kanten, Vorschau und Kollisionsprüfung.",
+      "phase": "phase-5",
+      "area": "basenbau",
+      "assignee": "dev-1",
+      "status": "Backlog",
+      "priority": "Hoch",
+      "progress": 0,
+      "estimate_hours": 16,
+      "due_date": "2027-08-20",
+      "tags": [
+        "bauen"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "t-022": {
+      "key": "ECL-022",
+      "title": "Biome & Points of Interest planen",
+      "description": "Biome, Ressourcenverteilung und interessante Orte für die große Karte festlegen.",
+      "phase": "phase-6",
+      "area": "game-design",
+      "assignee": "dev-2",
+      "status": "Backlog",
+      "priority": "Niedrig",
+      "progress": 0,
+      "estimate_hours": 8,
+      "due_date": "2027-10-01",
+      "tags": [
+        "welt",
+        "planung"
+      ],
+      "created_by_name": "Startdaten",
+      "created_at": "2026-11-25T12:00:00.000Z",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    }
+  },
+  "techdocs": {
+    "doc-html": {
+      "title": "Einstiegsseite & Canvas-Container",
+      "category": "Architektur",
+      "tech": "HTML",
+      "description": "Aufbau von client/index.html: Canvas, HUD-Layer, Ladebildschirm.",
+      "status": "Aktuell",
+      "link": "https://developer.mozilla.org/de/docs/Web/HTML",
+      "notes": "Canvas füllt den Viewport, HUD liegt als DOM-Ebene darüber."
+    },
+    "doc-css": {
+      "title": "HUD- und Menü-Styles",
+      "category": "Leitfaden",
+      "tech": "CSS",
+      "description": "Design-Tokens, HUD-Elemente und Menüs ohne Framework.",
+      "status": "Entwurf",
+      "link": "https://developer.mozilla.org/de/docs/Web/CSS",
+      "notes": ""
+    },
+    "doc-js": {
+      "title": "Modulstruktur & ES2022",
+      "category": "Leitfaden",
+      "tech": "JavaScript",
+      "description": "Wie Module geschnitten werden, Import-Regeln und Umgang mit shared/.",
+      "status": "Aktuell",
+      "link": "https://developer.mozilla.org/de/docs/Web/JavaScript",
+      "notes": "Keine zirkulären Imports zwischen render/ und physics/."
+    },
+    "doc-three": {
+      "title": "Renderer-Setup & Szenengraph",
+      "category": "Architektur",
+      "tech": "Three.js",
+      "description": "Renderer-Optionen, Kamera, Szenen-Hierarchie und Lade-Reihenfolge der Assets.",
+      "status": "Aktuell",
+      "link": "https://threejs.org/docs/",
+      "notes": "Schatten zunächst nur für die Sonne."
+    },
+    "doc-node": {
+      "title": "Server-Architektur",
+      "category": "Architektur",
+      "tech": "Node.js",
+      "description": "Prozessaufbau, Simulationsschleife des Servers und Konfiguration.",
+      "status": "Entwurf",
+      "link": "https://nodejs.org/docs/latest/api/",
+      "notes": ""
+    },
+    "doc-socket": {
+      "title": "Event-Katalog & Tickrate",
+      "category": "Referenz",
+      "tech": "Socket.IO",
+      "description": "Alle Netzwerk-Events mit Richtung, Payload und Frequenz.",
+      "status": "Entwurf",
+      "link": "https://socket.io/docs/v4/",
+      "notes": "Server-Tick 20 Hz, Client-Eingaben 60 Hz gebündelt."
+    },
+    "doc-rapier": {
+      "title": "Physik-Schritt & Kollisionsgruppen",
+      "category": "Referenz",
+      "tech": "Rapier.js",
+      "description": "Fester Zeitschritt, Kollisionsgruppen für Spieler, Fahrzeuge und Welt.",
+      "status": "Aktuell",
+      "link": "https://rapier.rs/docs/",
+      "notes": ""
+    }
+  },
+  "files": {
+    "f-01": {
+      "name": "index.html",
+      "type": "HTML",
+      "path": "client/",
+      "category": "Client",
+      "description": "Einstieg mit Canvas und HUD-Layer",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-02": {
+      "name": "main.js",
+      "type": "JavaScript",
+      "path": "client/src/",
+      "category": "Client",
+      "description": "Bootstrapping und Game-Loop",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-03": {
+      "name": "scene.js",
+      "type": "JavaScript",
+      "path": "client/src/render/",
+      "category": "Client",
+      "description": "Renderer, Kamera und Szene",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-04": {
+      "name": "world.js",
+      "type": "JavaScript",
+      "path": "client/src/physics/",
+      "category": "Client",
+      "description": "Rapier-Welt und fester Zeitschritt",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-05": {
+      "name": "controls.js",
+      "type": "JavaScript",
+      "path": "client/src/input/",
+      "category": "Client",
+      "description": "Aktionsbasiertes Input-Mapping",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-06": {
+      "name": "hud.css",
+      "type": "CSS",
+      "path": "client/styles/",
+      "category": "Client",
+      "description": "HUD- und Menü-Styles",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-07": {
+      "name": "index.js",
+      "type": "JavaScript",
+      "path": "server/",
+      "category": "Server",
+      "description": "HTTP- und Socket.IO-Server",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-08": {
+      "name": "rooms.js",
+      "type": "JavaScript",
+      "path": "server/",
+      "category": "Server",
+      "description": "Raum-Verwaltung pro Welt-Instanz",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-09": {
+      "name": "simulation.js",
+      "type": "JavaScript",
+      "path": "server/",
+      "category": "Server",
+      "description": "Autoritative Serversimulation",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-10": {
+      "name": "protocol.js",
+      "type": "JavaScript",
+      "path": "shared/",
+      "category": "Shared",
+      "description": "Event-Namen und Payload-Formate",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-11": {
+      "name": "constants.js",
+      "type": "JavaScript",
+      "path": "shared/",
+      "category": "Shared",
+      "description": "Tickraten, Weltgrößen, Limits",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-12": {
+      "name": "buggy.glb",
+      "type": "3D-Modell",
+      "path": "assets/models/",
+      "category": "Assets",
+      "description": "Fahrzeug-Prototyp",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-13": {
+      "name": "terrain_albedo.ktx2",
+      "type": "Textur",
+      "path": "assets/textures/",
+      "category": "Assets",
+      "description": "Terrain-Grundtextur",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-14": {
+      "name": "GDD.md",
+      "type": "Markdown",
+      "path": "docs/",
+      "category": "Docs",
+      "description": "Game Design Document",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    },
+    "f-15": {
+      "name": "ARCHITECTURE.md",
+      "type": "Markdown",
+      "path": "docs/",
+      "category": "Docs",
+      "description": "Architektur und Konventionen",
+      "updated_by": "Startdaten",
+      "updated_at": "2026-11-25T12:00:00.000Z"
+    }
+  },
+  "activity": {
+    "a-seed": {
+      "actor": "System",
+      "actor_id": "",
+      "action": "angelegt",
+      "target_type": "Projekt",
+      "target_title": "ECLIPSE",
+      "detail": "Startdaten: 6 Phasen, 12 Bereiche, 2 Entwickler, 22 Aufgaben",
+      "timestamp": "2026-11-25T12:00:00.000Z"
+    }
+  }
+}

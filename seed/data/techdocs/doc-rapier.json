@@ -1,0 +1,9 @@
+{
+  "title": "Physik-Schritt & Kollisionsgruppen",
+  "category": "Referenz",
+  "tech": "Rapier.js",
+  "description": "Fester Zeitschritt, Kollisionsgruppen für Spieler, Fahrzeuge und Welt.",
+  "status": "Aktuell",
+  "link": "https://rapier.rs/docs/",
+  "notes": ""
+}

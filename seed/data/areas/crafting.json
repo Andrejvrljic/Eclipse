@@ -1,0 +1,8 @@
+{
+  "name": "Crafting",
+  "slug": "crafting",
+  "icon": "hammer",
+  "description": "Rezepte, Werkbänke, Ressourcen und Herstellungszeiten.",
+  "progress": 0,
+  "order": 9
+}

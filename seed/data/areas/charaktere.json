@@ -1,0 +1,8 @@
+{
+  "name": "Charaktere",
+  "slug": "charaktere",
+  "icon": "person",
+  "description": "Spielerfigur, Animationen, Kamera und Charakter-Controller.",
+  "progress": 45,
+  "order": 7
+}

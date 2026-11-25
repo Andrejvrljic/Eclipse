@@ -1,0 +1,9 @@
+{
+  "name": "world.js",
+  "type": "JavaScript",
+  "path": "client/src/physics/",
+  "category": "Client",
+  "description": "Rapier-Welt und fester Zeitschritt",
+  "updated_by": "Startdaten",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

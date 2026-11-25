@@ -1,0 +1,8 @@
+{
+  "name": "3D-Welt",
+  "slug": "3d-welt",
+  "icon": "cube",
+  "description": "Renderer, Terrain, Assets, Beleuchtung und Streaming der Welt.",
+  "progress": 34,
+  "order": 4
+}

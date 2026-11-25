@@ -1,0 +1,8 @@
+{
+  "name": "Multiplayer",
+  "slug": "multiplayer",
+  "icon": "network",
+  "description": "Server, Räume, Protokoll, Prediction und Synchronisation.",
+  "progress": 3,
+  "order": 5
+}

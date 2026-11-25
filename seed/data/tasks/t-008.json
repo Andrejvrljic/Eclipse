@@ -1,0 +1,19 @@
+{
+  "key": "ECL-008",
+  "title": "Terrain-Prototyp mit Heightmap",
+  "description": "Heightmap laden, Mesh erzeugen, Heightfield-Collider in Rapier und einfache Texturierung.",
+  "phase": "phase-2",
+  "area": "3d-welt",
+  "assignee": "dev-1",
+  "status": "Review",
+  "priority": "Hoch",
+  "progress": 85,
+  "estimate_hours": 12,
+  "due_date": "2026-11-28",
+  "tags": [
+    "terrain"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

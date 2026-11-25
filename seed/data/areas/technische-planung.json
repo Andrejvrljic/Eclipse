@@ -1,0 +1,8 @@
+{
+  "name": "Technische Planung",
+  "slug": "technische-planung",
+  "icon": "ruler",
+  "description": "Architektur, Projektstruktur, Build-Pipeline und Konventionen.",
+  "progress": 100,
+  "order": 2
+}

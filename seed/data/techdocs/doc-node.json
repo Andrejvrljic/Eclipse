@@ -1,0 +1,9 @@
+{
+  "title": "Server-Architektur",
+  "category": "Architektur",
+  "tech": "Node.js",
+  "description": "Prozessaufbau, Simulationsschleife des Servers und Konfiguration.",
+  "status": "Entwurf",
+  "link": "https://nodejs.org/docs/latest/api/",
+  "notes": ""
+}

@@ -1,0 +1,20 @@
+{
+  "key": "ECL-015",
+  "title": "Chunk-Streaming für große Karten",
+  "description": "Welt in Chunks teilen, nach Spielerposition laden und entladen, Collider mitführen.",
+  "phase": "phase-4",
+  "area": "3d-welt",
+  "assignee": "dev-1",
+  "status": "Backlog",
+  "priority": "Hoch",
+  "progress": 0,
+  "estimate_hours": 24,
+  "due_date": "2027-04-09",
+  "tags": [
+    "streaming",
+    "performance"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

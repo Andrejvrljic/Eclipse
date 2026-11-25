@@ -1,0 +1,19 @@
+{
+  "key": "ECL-020",
+  "title": "XP-Kurve & Levelaufstieg",
+  "description": "Erfahrungsquellen, Levelkurve und Freischaltungen pro Stufe.",
+  "phase": "phase-5",
+  "area": "levelsystem",
+  "assignee": "dev-1",
+  "status": "Backlog",
+  "priority": "Niedrig",
+  "progress": 0,
+  "estimate_hours": 6,
+  "due_date": "2027-07-30",
+  "tags": [
+    "balancing"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

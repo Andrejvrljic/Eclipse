@@ -1,0 +1,8 @@
+{
+  "name": "Basenbau",
+  "slug": "basenbau",
+  "icon": "base",
+  "description": "Bauteile, Grid-Platzierung, Snapping, Stabilität und Besitzrechte.",
+  "progress": 0,
+  "order": 12
+}

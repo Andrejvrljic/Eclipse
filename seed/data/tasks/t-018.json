@@ -1,0 +1,19 @@
+{
+  "key": "ECL-018",
+  "title": "Crafting-Rezepte & Werkbank",
+  "description": "Rezeptformat, Werkbank-Interaktion und Herstellungszeiten mit Fortschritt.",
+  "phase": "phase-5",
+  "area": "crafting",
+  "assignee": "dev-2",
+  "status": "Backlog",
+  "priority": "Mittel",
+  "progress": 0,
+  "estimate_hours": 12,
+  "due_date": "2027-06-25",
+  "tags": [
+    "rezepte"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

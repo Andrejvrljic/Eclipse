@@ -1,0 +1,8 @@
+{
+  "name": "Inventar",
+  "slug": "inventar",
+  "icon": "slots",
+  "description": "Item-Datenmodell, Slots, Stapel, Ausrüstung und Inventar-UI.",
+  "progress": 0,
+  "order": 8
+}

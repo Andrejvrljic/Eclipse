@@ -1,0 +1,20 @@
+{
+  "key": "ECL-017",
+  "title": "Inventar-Datenmodell & Slot-UI",
+  "description": "Items, Stapelgrößen, Gewicht, Slots und ein Inventar-Overlay im HUD.",
+  "phase": "phase-5",
+  "area": "inventar",
+  "assignee": "dev-2",
+  "status": "Backlog",
+  "priority": "Mittel",
+  "progress": 0,
+  "estimate_hours": 10,
+  "due_date": "2027-06-04",
+  "tags": [
+    "items",
+    "ui"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

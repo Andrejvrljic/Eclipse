@@ -1,0 +1,8 @@
+{
+  "name": "Quests",
+  "slug": "quests",
+  "icon": "flag",
+  "description": "Questziele, Questketten, Belohnungen und Fortschrittsspeicherung.",
+  "progress": 0,
+  "order": 10
+}

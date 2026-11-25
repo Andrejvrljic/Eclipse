@@ -1,0 +1,9 @@
+{
+  "number": 3,
+  "name": "Multiplayer",
+  "description": "Autoritativer Server, Räume, Netzwerkprotokoll, Client-Prediction und Synchronisation.",
+  "status": "Ausstehend",
+  "progress": 3,
+  "color": "#8B5CF6",
+  "order": 3
+}

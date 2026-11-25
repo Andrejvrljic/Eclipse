@@ -1,0 +1,9 @@
+{
+  "title": "Renderer-Setup & Szenengraph",
+  "category": "Architektur",
+  "tech": "Three.js",
+  "description": "Renderer-Optionen, Kamera, Szenen-Hierarchie und Lade-Reihenfolge der Assets.",
+  "status": "Aktuell",
+  "link": "https://threejs.org/docs/",
+  "notes": "Schatten zunächst nur für die Sonne."
+}

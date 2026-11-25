@@ -1,0 +1,8 @@
+{
+  "name": "Spielmechaniken",
+  "slug": "spielmechaniken",
+  "icon": "cog",
+  "description": "Physik, Eingabe, Interaktionen und das Grundgefühl der Steuerung.",
+  "progress": 49,
+  "order": 3
+}

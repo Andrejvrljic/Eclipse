@@ -1,0 +1,9 @@
+{
+  "title": "HUD- und Menü-Styles",
+  "category": "Leitfaden",
+  "tech": "CSS",
+  "description": "Design-Tokens, HUD-Elemente und Menüs ohne Framework.",
+  "status": "Entwurf",
+  "link": "https://developer.mozilla.org/de/docs/Web/CSS",
+  "notes": ""
+}

@@ -1,0 +1,19 @@
+{
+  "key": "ECL-009",
+  "title": "Fahrzeug-Prototyp mit Raycast-Rädern",
+  "description": "Erstes Buggy-Fahrzeug mit Raycast-Federung, Lenkung, Gas und Bremse.",
+  "phase": "phase-2",
+  "area": "fahrzeuge",
+  "assignee": "dev-2",
+  "status": "Backlog",
+  "priority": "Mittel",
+  "progress": 0,
+  "estimate_hours": 18,
+  "due_date": "2026-12-23",
+  "tags": [
+    "fahrphysik"
+  ],
+  "created_by_name": "Startdaten",
+  "created_at": "2026-11-25T12:00:00.000Z",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "constants.js",
+  "type": "JavaScript",
+  "path": "shared/",
+  "category": "Shared",
+  "description": "Tickraten, Weltgrößen, Limits",
+  "updated_by": "Startdaten",
+  "updated_at": "2026-11-25T12:00:00.000Z"
+}
