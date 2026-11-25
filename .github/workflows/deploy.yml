@@ -83,6 +83,7 @@ jobs:
             echo "Neue Subdomain: $CUR.workers.dev"
           fi
           echo "SUBDOMAIN=$CUR" >> "$GITHUB_ENV"
+          echo "CF_ACC=$ACC" >> "$GITHUB_ENV"
 
       - name: Worker veröffentlichen
         run: |
@@ -90,12 +91,9 @@ jobs:
           echo "::notice title=Adresse::https://eclipse.$SUBDOMAIN.workers.dev"
           echo "### Online: https://eclipse.$SUBDOMAIN.workers.dev" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Team-Schlüssel setzen (optional)
-        env:
-          TEAM_KEY: ${{ secrets.TEAM_KEY }}
+      - name: Team-Schlüssel entfernen (Seite ohne Passwort)
         run: |
-          if [ -n "$TEAM_KEY" ]; then
-            printf '%s' "$TEAM_KEY" | npx wrangler secret put TEAM_KEY
-          else
-            echo "Kein TEAM_KEY gesetzt: Die Plattform ist für alle mit dem Link bearbeitbar."
-          fi
+          # Der Zugang ist bewusst offen: Wer den Link kennt, kann die Plattform nutzen.
+          RES="$(curl -sS -X DELETE -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACC/workers/scripts/eclipse/secrets/TEAM_KEY")"
+          if echo "$RES" | grep -Eq '"success": *true'; then echo "Team-Schlüssel entfernt."; else echo "Kein Team-Schlüssel vorhanden (oder bereits entfernt)."; fi

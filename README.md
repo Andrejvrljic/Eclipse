@@ -20,7 +20,7 @@ Repository-Secrets (Settings → Secrets and variables → Actions):
 | --- | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | ja | API-Token mit *Workers Scripts: Edit*, *D1: Edit*, *Account Settings: Read* |
 | `CLOUDFLARE_ACCOUNT_ID` | nur bei mehreren Konten | Cloudflare-Account-ID |
-| `TEAM_KEY` | empfohlen | Gemeinsamer Schlüssel; ohne ihn kann jeder mit dem Link Daten ändern |
+| `TEAM_KEY` | – | Wird nicht mehr verwendet: Die Seite ist ohne Passwort erreichbar |
 
 Lokal testen: `node scripts/build.mjs && npx wrangler dev`
 
