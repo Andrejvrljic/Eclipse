@@ -7,15 +7,16 @@ Dieses Repository enthält zwei Websites:
 
 ## Spiel (`game/`)
 
-Browserbasierter 3D-Prototyp: prozedurale Insel mit Sonnenfinsternis, Spielfigur (laufen, sprinten, springen, schwimmen),
-Geländewagen (einsteigen mit E), 25 sammelbare Eclipse-Splitter und Mehrspieler in Echtzeit.
+Survival-Mehrspieler im Browser auf einer 1,2 × 1,2 km großen Insel: Rohstoffe sammeln, Werkzeuge und Waffen herstellen,
+Basen bauen, Kreaturen jagen, zähmen und reiten, Fahrzeuge (Geländewagen, Quad, Truck) gemeinsam nutzen, Quests und Level.
 
 | Teil | Technik |
 | --- | --- |
 | Rendering | Three.js (`game/src/world.js`, `models.js`) |
-| Physik | Rapier.js (Charakter-Controller, Raycast-Fahrzeug, Höhenfeld) |
-| Mehrspieler | WebSocket zu einem Cloudflare Durable Object (`game/worker.js`) |
-| Steuerung | Tastatur/Maus und Touch (iPad) (`game/src/input.js`) |
+| Physik | Rapier.js: Charakter-Controller, Abrollen, Raycast-Fahrzeuge, Höhenfeld |
+| Spielserver | Cloudflare Durable Object (`game/server/room.js`): Kreaturen-KI, Fahrzeuge, Bauwerke, Spielstände |
+| Steuerung aus dem Dashboard | gemeinsame D1-Datenbank: `game_*`-Sammlungen, Befehle über `game_commands` |
+| Admins | Namen und Admin-Code in den Spielregeln (Dashboard → Spielsteuerung → Regeln) |
 
 Lokal starten: `npm install && npm run dev:game`
 

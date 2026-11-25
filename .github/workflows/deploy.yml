@@ -56,7 +56,7 @@ jobs:
             DB_ID="$(find_db)"
           fi
           if [ -z "$DB_ID" ]; then echo "::error::D1-Datenbank konnte nicht gefunden oder angelegt werden. Hat der Token das Recht D1: Edit?"; exit 1; fi
-          sed -i "s/__D1_DATABASE_ID__/$DB_ID/" wrangler.toml
+          sed -i "s/__D1_DATABASE_ID__/$DB_ID/" wrangler.toml game/wrangler.toml
           echo "D1-Datenbank: $DB_ID"
 
       - name: workers.dev-Subdomain sicherstellen

@@ -1,7 +1,7 @@
 // Prozedurale Insel: deterministisch (gleicher Seed = gleiche Welt für alle Spieler).
 
-export const SIZE = 480;        // Kantenlänge der Welt in Metern
-export const SEG = 192;         // Rasterzellen pro Kante (2,5 m pro Zelle)
+export const SIZE = 1200;       // Kantenlänge der Welt in Metern
+export const SEG = 320;         // Rasterzellen pro Kante (3,75 m pro Zelle)
 export const SEA_LEVEL = 0;
 
 // Kleines, schnelles Pseudo-Zufallssystem mit festem Seed.
@@ -52,13 +52,13 @@ export function heightAt(x, z) {
   // Inselform: zum Rand hin abfallen, damit das Meer die Welt begrenzt.
   const d = Math.min(1, Math.hypot(x, z) / (half * 0.92));
   const island = 1 - Math.pow(d, 3.4);
-  let h = fbm(x * 0.0065 + 11.3, z * 0.0065 - 4.1) * 26;          // große Hügel
-  h += Math.pow(Math.max(0, fbm(x * 0.012 - 7, z * 0.012 + 3, 4) * 2.2), 1.7) * 30; // Berge
-  h += fbm(x * 0.05, z * 0.05, 3) * 1.6;                              // kleine Unebenheiten
-  h = h * island + island * 13 - (1 - island) * 12;
+  let h = fbm(x * 0.0032 + 11.3, z * 0.0032 - 4.1) * 30;          // große Hügel
+  h += Math.pow(Math.max(0, fbm(x * 0.0055 - 7, z * 0.0055 + 3, 5) * 2.2), 1.8) * 70; // Gebirge
+  h += fbm(x * 0.03, z * 0.03, 3) * 2.2;                              // kleine Unebenheiten
+  h = h * island + island * 14 - (1 - island) * 14;
   // Startplatz in der Mitte einebnen.
   const c = Math.hypot(x - SPAWN.x, z - SPAWN.z);
-  const flat = Math.min(1, Math.max(0, (c - 14) / 26));
+  const flat = Math.min(1, Math.max(0, (c - 30) / 40));
   return h * flat + SPAWN_H * (1 - flat);
 }
 export const SPAWN = { x: 0, z: 0 };
@@ -90,4 +90,21 @@ export function makeSampler(grid) {
     if (tx + tz <= 1) return a + (b - a) * tx + (c - a) * tz;
     return d + (c - d) * (1 - tx) + (b - d) * (1 - tz);
   };
+}
+
+/** Nächstgelegener Punkt an Land (Höhe > minH), spiralförmig gesucht – bevorzugt Richtung Inselmitte. */
+export function findLand(sampler, x, z, minH = 1.5) {
+  if (sampler(x, z) > minH) return { x, z };
+  for (let r = 4; r < SIZE; r += 4) {
+    const steps = Math.max(12, Math.round(r * 0.6));
+    let best = null, bd = Infinity;
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * Math.PI * 2;
+      const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      if (Math.abs(px) > SIZE / 2 - 10 || Math.abs(pz) > SIZE / 2 - 10) continue;
+      if (sampler(px, pz) > minH) { const d = Math.hypot(px, pz); if (d < bd) { bd = d; best = { x: px, z: pz }; } }
+    }
+    if (best) return best;
+  }
+  return { x: SPAWN.x, z: SPAWN.z };
 }

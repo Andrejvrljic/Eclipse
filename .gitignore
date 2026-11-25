@@ -5,4 +5,5 @@ game/dist/
 game/.wrangler/
 node_modules/
 wrangler.local.toml
+game/wrangler.local.toml
 .dev.vars

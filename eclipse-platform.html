@@ -233,6 +233,7 @@ select.sel.on{border-color:rgba(167,139,250,.5);color:var(--accent-2)}
 .prog-note{font-size:12px;color:var(--muted);margin-top:4px}
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
 .kpis>:last-child{grid-column:1/-1}
+.kpis.gk>:last-child{grid-column:auto}
 @container (min-width:720px){.kpis{grid-template-columns:repeat(5,minmax(0,1fr))}.kpis>:last-child{grid-column:auto}}
 .kpi{display:flex;flex-direction:column;gap:8px;padding:16px;text-align:left;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);transition:border-color var(--t) var(--ease),background var(--t) var(--ease)}
 .kpi:hover{border-color:var(--line-3);background:#111117}
@@ -637,7 +638,8 @@ const ls = {
   set(k, v) { try { localStorage.setItem('eclipse.' + k, v); } catch { /* egal */ } },
 };
 
-const COLLS = ['project', 'phases', 'tasks', 'developers', 'areas', 'techdocs', 'files', 'activity'];
+const COLLS = ['project', 'phases', 'tasks', 'developers', 'areas', 'techdocs', 'files', 'activity',
+  'game_settings', 'game_items', 'game_recipes', 'game_species', 'game_quests', 'game_vehicles', 'game_players', 'game_buildings', 'game_status', 'game_commands', 'game_tames'];
 const STATUS = ['Backlog', 'In Arbeit', 'Review', 'Erledigt'];
 const PRIO = ['Niedrig', 'Mittel', 'Hoch', 'Kritisch'];
 const PHASE_STATUS = ['Ausstehend', 'Aktiv', 'Abgeschlossen'];
@@ -663,7 +665,7 @@ const PHASE_TONE = { 'Ausstehend': 'muted', 'Aktiv': 'accent', 'Abgeschlossen': 
 const PROJ_TONE = { 'Planung': 'info', 'In Entwicklung': 'accent', 'Pause': 'warn', 'Release': 'ok' };
 const DOC_TONE = { 'Entwurf': 'warn', 'Aktuell': 'ok', 'Veraltet': 'muted' };
 const ONLINE_COLOR = { 'Online': 'var(--ok)', 'Abwesend': 'var(--warn)', 'Offline': 'var(--dim)' };
-const ROUTES = { dashboard: 'Dashboard', phasen: 'Phasen', aufgaben: 'Aufgaben', bereiche: 'Bereiche', team: 'Team', technik: 'Technik', aktivitaet: 'Aktivität' };
+const ROUTES = { dashboard: 'Dashboard', phasen: 'Phasen', aufgaben: 'Aufgaben', bereiche: 'Bereiche', team: 'Team', technik: 'Technik', aktivitaet: 'Aktivität', spiel: 'Spielsteuerung' };
 
 /* Icons: feine Linien, 24er Raster */
 const ICONS = {
@@ -674,6 +676,7 @@ const ICONS = {
   team: '<circle cx="9" cy="8" r="3.4"/><path d="M2.8 20c.8-3.5 3.3-5.4 6.2-5.4s5.4 1.9 6.2 5.4"/><path d="M15.6 4.8a3.4 3.4 0 010 6.4M17.8 14.9c1.8.7 3 2.3 3.4 5.1"/>',
   technik: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5" rx=".5"/><path d="M9 2.5V6M15 2.5V6M9 18v3.5M15 18v3.5M2.5 9H6M2.5 15H6M18 9h3.5M18 15h3.5"/>',
   aktivitaet: '<path d="M3 12h4l2.6-7 4.8 14 2.6-7h4"/>',
+  spiel: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 11v3M6 12.5h3M15.5 12h.01M18 13.5h.01" stroke-width="2"/>',
   search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
@@ -727,6 +730,7 @@ const UI = {
   act: { actor: '', type: '' },
   tech: '',
   tree: new Set(ROOTS),
+  gameTab: 'live',
   dragging: false,
 };
 
@@ -945,6 +949,7 @@ async function restDb() {
     try { await req(method, `${BASE}/${encodeURIComponent(c)}/${encodeURIComponent(id)}`, method === 'DELETE' ? null : body); }
     catch (e) { if (prev === undefined) delete m[id]; else m[id] = prev; throw e; }
   };
+  meta.rest = true;
   const coll = (c, q = {}) => ({
     orderBy: (f, dir) => coll(c, { ...q, order: [f, dir] }),
     limit: (n) => coll(c, { ...q, lim: n }),
@@ -1047,6 +1052,7 @@ const NAV = [
   ['Übersicht', [['dashboard', 'Dashboard'], ['aktivitaet', 'Aktivität']]],
   ['Produktion', [['phasen', 'Phasen'], ['aufgaben', 'Aufgaben'], ['bereiche', 'Bereiche']]],
   ['Studio', [['team', 'Team'], ['technik', 'Technik']]],
+  ['Spiel', [['spiel', 'Spielsteuerung']]],
 ];
 function renderChrome() {
   const r = UI.route.name === 'bereich' ? 'bereiche' : UI.route.name;
@@ -1055,7 +1061,7 @@ function renderChrome() {
     `<a href="#${k}" class="${r === k ? 'active' : ''}" data-tip="${esc(l)}" ${r === k ? 'aria-current="page"' : ''}>${ic(k)}<span class="lbl">${esc(l)}</span>${k === 'aufgaben' && ready() ? `<span class="count">${open}</span>` : ''}</a>`).join('')).join('');
   // Link zum Spiel, wenn das Dashboard unter eclipse.<subdomain>.workers.dev läuft
   const gameUrl = location.hostname.startsWith('eclipse.') ? location.origin.replace('//eclipse.', '//spiel.') : '';
-  const navFull = navHtml + (gameUrl ? `<div class="nav-group"><span>Spiel</span></div><a href="${esc(gameUrl)}" target="_blank" rel="noopener" data-tip="Spiel öffnen">${ic('cube')}<span class="lbl">Spiel öffnen</span></a>` : '');
+  const navFull = navHtml + (gameUrl ? `<a href="${esc(gameUrl)}" target="_blank" rel="noopener" data-tip="Spiel öffnen">${ic('cube')}<span class="lbl">Spiel öffnen</span></a>` : '');
   const nav = $('#nav'); if (nav.innerHTML !== navFull) nav.innerHTML = navFull;
   const me = S.developers[meId()];
   const prof = me
@@ -1409,7 +1415,357 @@ function vAktivitaet() {
   return head + groups.map(([l, items], i) => `<section class="daygroup st" style="--i:${Math.min(i, 8)}"><h2>${esc(l)} <span class="mono">· ${items.length}</span></h2><ul class="acts">${items.map(actItem).join('')}</ul></section>`).join('');
 }
 
-const VIEWS = { dashboard: vDashboard, phasen: vPhasen, aufgaben: vAufgaben, bereiche: vBereiche, bereich: vBereich, team: vTeam, technik: vTechnik, aktivitaet: vAktivitaet };
+const ACTIONS_EXTRA = {};
+/* =========================================================
+   Seite: Spielsteuerung (steuert das Spiel über die gemeinsame Datenbank)
+   ========================================================= */
+const G = {
+  ITEM_TYPES: ['Rohstoff', 'Nahrung', 'Werkzeug', 'Waffe', 'Rüstung', 'Bauteil', 'Besonderes'],
+  BEHAVIORS: ['Fliehend', 'Neutral', 'Aggressiv'],
+  BODY: ['Vierbeiner', 'Zweibeiner'],
+  QUEST_TYPES: ['Sammeln', 'Herstellen', 'Besiegen', 'Bauen', 'Zähmen', 'Level erreichen'],
+  VEHICLES: { gelaendewagen: 'Geländewagen', quad: 'Quad', truck: 'Truck' },
+  STRUCTURES: { fundament: 'Fundament', wand: 'Wand', wand_tuer: 'Türwand', decke: 'Decke', lagerfeuer: 'Lagerfeuer', schlafsack: 'Schlafsack' },
+  TABS: [['live', 'Live'], ['spieler', 'Spieler'], ['kreaturen', 'Kreaturen'], ['gegenstaende', 'Gegenstände'], ['rezepte', 'Rezepte'], ['quests', 'Quests'], ['fahrzeuge', 'Fahrzeuge'], ['bauwerke', 'Bauwerke'], ['regeln', 'Regeln']],
+};
+const gSettings = () => S.game_settings.main || null;
+const gStatus = () => S.game_status.live || null;
+const gameUrl = () => (location.hostname.startsWith('eclipse.') ? location.origin.replace('//eclipse.', '//spiel.') : '');
+const gName = (c, id) => (S[c][id] && (S[c][id].name || S[c][id].title)) || id || '–';
+const itemOpts = (blank = '') => [...(blank ? [{ v: '', l: blank }] : []), ...Object.values(S.game_items).sort(byOrder).map((x) => ({ v: x.id, l: x.name || x.id }))];
+const mapText = (m) => Object.entries(m || {}).map(([k, v]) => `${k}:${v}`).join(', ');
+function parseMap(text, validIds) {
+  const out = {};
+  for (const part of String(text || '').split(',').map((s) => s.trim()).filter(Boolean)) {
+    const [k, v] = part.split(':').map((s) => s.trim());
+    if (!k || !Number.isFinite(Number(v)) || Number(v) <= 0) throw new Error(`„${part}“ ist kein gültiger Eintrag (Format: id:anzahl).`);
+    if (validIds && !validIds.includes(k)) throw new Error(`„${k}“ gibt es nicht. Erlaubt: ${validIds.join(', ')}`);
+    out[k] = Math.round(Number(v));
+  }
+  return out;
+}
+const mapCheck = (ids) => (v) => { try { parseMap(v, ids()); return ''; } catch (e) { return e.message; } };
+const yesNo = [{ v: 'ja', l: 'Ja' }, { v: 'nein', l: 'Nein' }];
+
+/** Spiel-Server über Änderung informieren: Versionsnummer erhöhen. */
+async function bumpGame() {
+  const s = gSettings();
+  if (!s) { toast('Das Spiel wurde noch nie gestartet. Öffne es einmal, dann sind die Einstellungen da.', 'warn'); return false; }
+  return commit('game_settings', 'main', 'update', { version: (Number(s.version) || 1) + 1 }, null, { silent: true });
+}
+async function gameCommand(op, payload, logTitle, detail = '') {
+  const ok = await commit('game_commands', uid('cmd'), 'set', { op, ...payload, created_at: nowIso() }, { action: 'ausgeführt', type: 'Spielbefehl', title: logTitle, detail });
+  if (ok) toast('Befehl gesendet. Das Spiel übernimmt ihn in wenigen Sekunden.');
+  return ok;
+}
+
+function vSpiel() {
+  const tab = UI.gameTab || 'live';
+  const url = gameUrl();
+  const head = `<div class="page-head"><div><h1>Spielsteuerung</h1><p>Alles hier wirkt sofort im Spiel${gStatus() ? ` · zuletzt gemeldet ${esc(rel(gStatus().updated))}` : ''}</p></div>
+    <div class="actions">${url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">${ic('cube')}Spiel öffnen</a>` : ''}</div></div>
+    <div class="card filters" role="tablist">${G.TABS.map(([k, l]) => `<button class="fchip" data-act="g-tab" data-k="${k}" aria-pressed="${k === tab}">${esc(l)}</button>`).join('')}</div>`;
+  if (!meta.rest) return head + empty('Nur in der Cloudflare-Version', 'Die Spielsteuerung braucht die gemeinsame Datenbank mit dem Spiel. Öffne das Dashboard unter seiner workers.dev-Adresse.');
+  if (!gSettings()) return head + empty('Noch keine Spieldaten', 'Sobald das Spiel einmal gestartet wurde, erscheinen hier Kreaturen, Gegenstände, Quests und Einstellungen.');
+  const fn = { live: gLive, spieler: gPlayers, kreaturen: gSpecies, gegenstaende: gItems, rezepte: gRecipes, quests: gQuests, fahrzeuge: gVehicles, bauwerke: gBuildings, regeln: gRules }[tab] || gLive;
+  return head + fn();
+}
+
+function gTable(cols, rows, emptyText) {
+  if (!rows.length) return `<div class="card" style="padding:16px">${empty('Keine Einträge', emptyText)}</div>`;
+  return `<div class="table-wrap"><table class="tbl"><thead><tr>${cols.map((c) => `<th><button>${esc(c)}</button></th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+}
+const gBtn = (act, id, label, cls = 'btn-sm') => `<button class="btn ${cls}" data-act="${act}" data-id="${esc(id)}">${label}</button>`;
+
+function gLive() {
+  const st = gStatus() || { online: [], creatures: {} };
+  const online = st.online || [];
+  const fresh = st.updated && Date.now() - new Date(st.updated).getTime() < 60000;
+  const s = gSettings();
+  const kpi = (l, v, sub) => `<div class="kpi"><span class="label">${esc(l)}</span><span class="kpi-v">${v}</span><span class="kpi-s">${esc(sub)}</span></div>`;
+  const totalCr = Object.values(st.creatures || {}).reduce((a, b) => a + b, 0);
+  return `<section class="kpis gk" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      ${kpi('Online', fresh ? online.length : 0, fresh ? 'Spieler gerade im Spiel' : 'Server schläft gerade')}
+      ${kpi('Kreaturen', totalCr, `${st.tamed || 0} gezähmt`)}
+      ${kpi('Bauwerke', st.buildings ?? Object.keys(S.game_buildings).length, 'Bauteile in der Welt')}
+      ${kpi('Spieler gesamt', Object.keys(S.game_players).length, 'haben schon gespielt')}
+      ${kpi('Spieler-Kämpfe', s.pvp ? 'AN' : 'AUS', 'in den Regeln änderbar')}
+    </section>
+    <div class="sec-head"><h2>Gerade online</h2></div>
+    ${gTable(['Name', 'Level', 'Leben', 'Position', 'Fahrzeug', 'Aktionen'], fresh ? online.map((o) => `<tr><td><span style="display:inline-flex;gap:8px;align-items:center"><i class="dot" style="--dc:${safeColor(o.color)}"></i>${esc(o.name)}${o.admin ? ' ' + pill('Admin', 'warn') : ''}</span></td><td class="mono">${o.level}</td><td class="mono">${o.hp ?? 100} %</td><td class="mono">${o.x ?? '–'}, ${o.z ?? '–'}</td><td>${esc(o.vehicle ? (S.game_vehicles[o.vehicle] ? G.VEHICLES[S.game_vehicles[o.vehicle].type] : o.vehicle) : '–')}</td>
+      <td><span style="display:flex;gap:6px;flex-wrap:wrap">${gBtn('g-give', o.pid, 'Geben')}${gBtn('g-heal', o.pid, 'Heilen')}${gBtn('g-tp', o.pid, 'Zum Start')}${gBtn('g-kick', o.pid, 'Entfernen', 'btn-sm btn-danger')}</span></td></tr>`) : [], 'Gerade spielt niemand.')}
+    <div class="sec-head"><h2>Server</h2></div>
+    <div class="card" style="padding:16px;display:flex;flex-wrap:wrap;gap:10px">
+      <button class="btn btn-primary" data-act="g-msg">${ic('aktivitaet')}Ansage an alle</button>
+      <button class="btn" data-act="g-respawn">Kreaturen neu verteilen</button>
+      <button class="btn" data-act="g-vreset">Fahrzeuge an Startpositionen</button>
+      <button class="btn btn-danger" data-act="g-wipe">Alle Bauwerke entfernen</button>
+    </div>
+    <div class="sec-head"><h2>Admins im Spiel</h2></div>
+    <div class="card" style="padding:16px;display:grid;gap:8px">
+      <p>Admins: <b>${esc(s.admins || '–')}</b></p>
+      <p>Admin-Code: <span class="mono" style="font-size:16px;color:var(--accent-2)">${esc(s.admin_code || '– nicht gesetzt –')}</span></p>
+      <p class="muted" style="font-size:13px">Wer sich im Spiel mit einem Admin-Namen anmeldet, muss diesen Code eingeben („Ich bin Admin“ im Startbildschirm). Gib ihn nur an die Admins weiter. Ändern unter „Regeln“.</p>
+    </div>`;
+}
+
+function gPlayers() {
+  const online = new Set(((gStatus() || {}).online || []).map((o) => o.pid));
+  const players = list('game_players').sort((a, b) => String(b.last_seen || '').localeCompare(String(a.last_seen || '')));
+  return gTable(['Name', 'Status', 'Level', 'EP', 'Münzen', 'Besiegt', 'Gebaut', 'Zuletzt', 'Aktionen'], players.map((p) => `<tr>
+    <td><span style="display:inline-flex;gap:8px;align-items:center"><i class="dot" style="--dc:${safeColor(p.color)}"></i>${esc(p.name || '–')}</span></td>
+    <td>${online.has(p.id) ? pill('Online', 'ok') : pill('Offline', 'muted')}</td><td class="mono">${p.level || 1}</td><td class="mono">${p.xp || 0}</td><td class="mono">${p.coins || 0}</td>
+    <td class="mono">${(p.stats && p.stats.kills) || 0}</td><td class="mono">${(p.stats && p.stats.built) || 0}</td><td class="muted">${esc(rel(p.last_seen) || '–')}</td>
+    <td><span style="display:flex;gap:6px;flex-wrap:wrap">${gBtn('g-pedit', p.id, 'Werte')}${gBtn('g-give', p.id, 'Geben')}${gBtn('g-heal', p.id, 'Heilen')}${gBtn('g-tp', p.id, 'Zum Start')}${online.has(p.id) ? gBtn('g-kick', p.id, 'Entfernen', 'btn-sm btn-danger') : ''}${gBtn('g-preset', p.id, 'Zurücksetzen', 'btn-sm btn-danger')}</span></td></tr>`), 'Noch hat niemand gespielt.');
+}
+
+function gConfigList(coll, cols, row, addLabel, addAct) {
+  const items = list(coll).sort(byOrder);
+  return `<div class="sec-head" style="margin-top:0"><h2>${items.length} Einträge</h2><button class="btn btn-primary btn-sm" data-act="${addAct}">${ic('plus')}${esc(addLabel)}</button></div>` + gTable(cols, items.map(row), 'Noch nichts angelegt.');
+}
+function gSpecies() {
+  const counts = (gStatus() || {}).creatures || {};
+  return gConfigList('game_species', ['Name', 'Körper', 'Leben', 'Schaden', 'Tempo', 'Verhalten', 'Anzahl', 'Lebend', 'Zähmbar', ''], (s) => `<tr>
+    <td><span style="display:inline-flex;gap:8px;align-items:center"><i class="dot" style="--dc:${safeColor(s.color)}"></i><b>${esc(s.name)}</b></span></td><td>${esc(s.body)}</td><td class="mono">${s.hp}</td><td class="mono">${s.damage}</td><td class="mono">${s.speed}</td>
+    <td>${pill(s.behavior, s.behavior === 'Aggressiv' ? 'crit' : s.behavior === 'Neutral' ? 'warn' : 'ok')}</td><td class="mono">${s.count}</td><td class="mono">${counts[s.id] || 0}</td>
+    <td>${s.tame_food ? esc(gName('game_items', s.tame_food)) + ' ×' + s.tame_amount + (s.rideable ? ' · reitbar' : '') : '–'}</td>
+    <td><span style="display:flex;gap:4px">${gBtn('g-sp-edit', s.id, ic('edit'), 'icon-btn')}${gBtn('g-sp-del', s.id, ic('trash'), 'icon-btn')}</span></td></tr>`, 'Kreatur anlegen', 'g-sp-new');
+}
+function gItems() {
+  return gConfigList('game_items', ['Name', 'Typ', 'Stapel', 'Werte', ''], (s) => `<tr>
+    <td><span style="display:inline-flex;gap:8px;align-items:center"><i class="dot" style="--dc:${safeColor(s.color)}"></i><b>${esc(s.name)}</b> <span class="mono muted">${esc(s.id)}</span></span></td><td>${esc(s.type)}</td><td class="mono">${s.stack}</td>
+    <td class="muted">${[s.damage ? 'Schaden ' + s.damage : '', s.food ? 'Sättigung ' + s.food : '', s.heal ? 'Heilung ' + s.heal : '', s.armor ? 'Schutz ' + s.armor + ' %' : '', s.wood > 1 ? 'Holz ×' + s.wood : '', s.stone > 1 ? 'Stein ×' + s.stone : '', s.structure ? 'baut ' + (G.STRUCTURES[s.structure] || s.structure) : ''].filter(Boolean).join(' · ') || '–'}</td>
+    <td><span style="display:flex;gap:4px">${gBtn('g-it-edit', s.id, ic('edit'), 'icon-btn')}${gBtn('g-it-del', s.id, ic('trash'), 'icon-btn')}</span></td></tr>`, 'Gegenstand anlegen', 'g-it-new');
+}
+function gRecipes() {
+  return gConfigList('game_recipes', ['Ergebnis', 'Zutaten', 'Ab Level', 'Station', ''], (r) => `<tr>
+    <td><b>${esc(gName('game_items', r.item))}</b>${Number(r.amount) > 1 ? ' ×' + r.amount : ''}</td><td>${Object.entries(r.ingredients || {}).map(([k, v]) => `${v}× ${esc(gName('game_items', k))}`).join(', ')}</td>
+    <td class="mono">${r.level}</td><td>${r.station ? esc(gName('game_items', r.station)) : '–'}</td>
+    <td><span style="display:flex;gap:4px">${gBtn('g-re-edit', r.id, ic('edit'), 'icon-btn')}${gBtn('g-re-del', r.id, ic('trash'), 'icon-btn')}</span></td></tr>`, 'Rezept anlegen', 'g-re-new');
+}
+function gQuests() {
+  return gConfigList('game_quests', ['Quest', 'Art', 'Ziel', 'Belohnung', ''], (q) => `<tr>
+    <td><b>${esc(q.title)}</b><div class="muted" style="font-size:12px">${esc(q.description)}</div></td><td>${esc(q.type)}</td>
+    <td>${q.count}× ${esc(q.target ? (S.game_items[q.target] ? gName('game_items', q.target) : S.game_species[q.target] ? gName('game_species', q.target) : G.STRUCTURES[q.target] || q.target) : 'beliebig')}</td>
+    <td class="muted">${[q.xp ? q.xp + ' EP' : '', q.coins ? q.coins + ' Münzen' : '', q.reward_item ? (q.reward_amount || 1) + '× ' + gName('game_items', q.reward_item) : ''].filter(Boolean).join(' · ') || '–'}</td>
+    <td><span style="display:flex;gap:4px">${gBtn('g-qu-edit', q.id, ic('edit'), 'icon-btn')}${gBtn('g-qu-del', q.id, ic('trash'), 'icon-btn')}</span></td></tr>`, 'Quest anlegen', 'g-qu-new');
+}
+function gVehicles() {
+  return `<p class="muted" style="margin-bottom:12px">Farbe und Typ ändern sich sofort für alle. Neue Startpositionen gelten nach „Fahrzeuge an Startpositionen“ (Seite Live).</p>` +
+    gConfigList('game_vehicles', ['Fahrzeug', 'Farbe', 'Startposition', 'Aktuell', ''], (v) => `<tr>
+    <td><b>${esc(G.VEHICLES[v.type] || v.type)}</b> <span class="mono muted">${esc(v.id)}</span></td><td><span style="display:inline-flex;gap:8px;align-items:center"><i class="dot" style="--dc:${safeColor(v.color)}"></i><span class="mono">${esc(v.color)}</span></span></td>
+    <td class="mono">${Math.round(v.x)}, ${Math.round(v.z)}</td><td class="mono">${Array.isArray(v.p) ? Math.round(v.p[0]) + ', ' + Math.round(v.p[2]) : '–'}</td>
+    <td><span style="display:flex;gap:4px">${gBtn('g-ve-edit', v.id, ic('edit'), 'icon-btn')}${gBtn('g-ve-del', v.id, ic('trash'), 'icon-btn')}</span></td></tr>`, 'Fahrzeug hinzufügen', 'g-ve-new');
+}
+function gBuildings() {
+  const all = list('game_buildings');
+  const byOwner = new Map();
+  for (const b of all) { const k = b.owner || '?'; if (!byOwner.has(k)) byOwner.set(k, { name: b.ownerName || '?', n: 0, types: {} }); const o = byOwner.get(k); o.n++; o.types[b.type] = (o.types[b.type] || 0) + 1; }
+  const rows = [...byOwner.entries()].sort((a, b) => b[1].n - a[1].n).map(([pid, o]) => `<tr><td><b>${esc(o.name)}</b></td><td class="mono">${o.n}</td>
+    <td class="muted">${Object.entries(o.types).map(([t, n]) => `${n}× ${esc(G.STRUCTURES[t] || t)}`).join(', ')}</td><td>${gBtn('g-bwipe', pid, 'Alle entfernen', 'btn-sm btn-danger')}</td></tr>`);
+  return `<div class="sec-head" style="margin-top:0"><h2>${all.length} Bauteile in der Welt</h2></div>` + gTable(['Erbauer', 'Anzahl', 'Bauteile', ''], rows, 'Noch wurde nichts gebaut.');
+}
+function gRules() {
+  const s = gSettings();
+  const row = (l, v) => `<div class="stat"><b style="font-size:16px">${esc(v)}</b><span>${esc(l)}</span></div>`;
+  return `<div class="sec-head" style="margin-top:0"><h2>Spielregeln</h2><button class="btn btn-primary btn-sm" data-act="g-rules">${ic('edit')}Regeln bearbeiten</button></div>
+    <div class="statrow" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+      ${row('Erfahrung ×', s.xp_multiplier)}${row('Sammeln ×', s.gather_multiplier)}${row('Kreaturen-Schaden ×', s.damage_multiplier)}${row('Kreaturen-Menge ×', s.creature_multiplier)}
+      ${row('Hunger-Tempo ×', s.hunger_rate)}${row('Max. Level', s.max_level)}${row('Start-Münzen', s.start_coins)}${row('Max. Spieler', s.max_players)}
+      ${row('Spieler-Kämpfe', s.pvp ? 'AN' : 'AUS')}${row('Admins', s.admins || '–')}
+    </div>
+    <div class="card" style="padding:16px;margin-top:12px"><div class="label">Begrüßung im Spiel</div><p style="margin-top:6px">${esc(s.motd || '–')}</p></div>`;
+}
+
+/* ---------- Formulare ---------- */
+function gEditDoc({ coll, id, title, fields, defaults, toDoc, label }) {
+  const cur = id ? S[coll][id] : null;
+  const fs = fields();
+  const values = cur ? { ...cur } : { ...defaults };
+  for (const k of ['drops', 'ingredients']) if (values[k] && typeof values[k] === 'object') values[k] = mapText(values[k]);
+  for (const k of ['rideable', 'glow']) if (k in values || coll === 'game_species') values[k] = values[k] ? 'ja' : 'nein';
+  if (!id) fs.unshift({ k: '_id', label: 'Kennung (id)', req: true, max: 40, hint: 'Kleinbuchstaben, Ziffern, _ und -; nicht änderbar', check: (v) => (!/^[a-z0-9_-]{2,40}$/.test(v) ? 'Nur a–z, 0–9, _ und - (2–40 Zeichen).' : S[coll][v] ? 'Diese Kennung gibt es schon.' : '') });
+  openForm({
+    title, sub: id || '', fields: fs, values, submitLabel: id ? 'Speichern' : 'Anlegen',
+    onSubmit: async (v) => {
+      const docId = id || v._id; delete v._id;
+      let doc;
+      try { doc = toDoc(v, cur); } catch (e) { toast(e.message, 'warn'); return false; }
+      const ok = await commit(coll, docId, cur ? 'update' : 'set', doc, { action: cur ? 'bearbeitet' : 'erstellt', type: label, title: doc.name || doc.title || docId });
+      if (ok) { await bumpGame(); toast('Gespeichert – das Spiel übernimmt es in wenigen Sekunden.'); }
+      return ok;
+    },
+  });
+}
+async function gDeleteDoc(coll, id, label) {
+  const d = S[coll][id]; if (!d) return;
+  if (!await confirmDialog({ title: `${label} löschen?`, html: `<b>${esc(d.name || d.title || id)}</b> wird aus dem Spiel entfernt.` })) return;
+  if (await commit(coll, id, 'delete', null, { action: 'gelöscht', type: label, title: d.name || d.title || id })) { await bumpGame(); toast('Gelöscht.'); }
+}
+const num0 = (v, d = 0) => (v === null || v === '' || !Number.isFinite(Number(v)) ? d : Number(v));
+
+function gSpeciesForm(id) {
+  gEditDoc({
+    coll: 'game_species', id, title: id ? 'Kreatur bearbeiten' : 'Neue Kreatur', label: 'Kreatur',
+    defaults: { name: '', body: 'Vierbeiner', color: '#8A6F4E', scale: 1, hp: 60, damage: 8, speed: 5, behavior: 'Neutral', count: 8, xp: 40, drops: { fleisch: 2 }, tame_food: '', tame_amount: 0, rideable: false, glow: false, order: list('game_species').length + 1 },
+    fields: () => [
+      { k: 'name', label: 'Name', req: true, min: 2, max: 40 },
+      { k: 'body', label: 'Körperbau', type: 'select', options: G.BODY },
+      { k: 'behavior', label: 'Verhalten', type: 'select', options: G.BEHAVIORS },
+      { k: 'color', label: 'Farbe', type: 'color' },
+      { k: 'scale', label: 'Größe (0,3–8)', type: 'number', min: 0.3, max: 8, step: 0.1, req: true },
+      { k: 'hp', label: 'Leben', type: 'number', min: 1, max: 100000, req: true, int: true },
+      { k: 'damage', label: 'Schaden pro Biss', type: 'number', min: 0, max: 1000, req: true },
+      { k: 'speed', label: 'Tempo (m/s)', type: 'number', min: 0, max: 30, step: 0.1, req: true },
+      { k: 'count', label: 'Anzahl in der Welt', type: 'number', min: 0, max: 200, int: true, req: true },
+      { k: 'xp', label: 'Erfahrung beim Besiegen', type: 'number', min: 0, max: 100000, int: true },
+      { k: 'drops', label: 'Beute', full: true, hint: 'Format: fleisch:2, haut:1', check: mapCheck(() => Object.keys(S.game_items)) },
+      { k: 'tame_food', label: 'Zähmen mit', type: 'select', options: itemOpts('Nicht zähmbar') },
+      { k: 'tame_amount', label: 'Wie oft füttern', type: 'number', min: 0, max: 500, int: true },
+      { k: 'rideable', label: 'Reitbar', type: 'select', options: yesNo },
+      { k: 'glow', label: 'Leuchtet', type: 'select', options: yesNo },
+    ],
+    toDoc: (v) => ({ ...v, drops: parseMap(v.drops, Object.keys(S.game_items)), rideable: v.rideable === 'ja', glow: v.glow === 'ja', tame_amount: num0(v.tame_amount), xp: num0(v.xp) }),
+  });
+}
+function gItemForm(id) {
+  gEditDoc({
+    coll: 'game_items', id, title: id ? 'Gegenstand bearbeiten' : 'Neuer Gegenstand', label: 'Gegenstand',
+    defaults: { name: '', type: 'Rohstoff', color: '#9CA3AF', stack: 50, order: list('game_items').length + 1 },
+    fields: () => [
+      { k: 'name', label: 'Name', req: true, min: 2, max: 40 },
+      { k: 'type', label: 'Typ', type: 'select', options: G.ITEM_TYPES },
+      { k: 'color', label: 'Farbe', type: 'color' },
+      { k: 'stack', label: 'Stapelgröße', type: 'number', min: 1, max: 1000, int: true, req: true },
+      { k: 'damage', label: 'Schaden (Waffe/Werkzeug)', type: 'number', min: 0, max: 10000 },
+      { k: 'reach', label: 'Reichweite (m)', type: 'number', min: 0, max: 10, step: 0.1 },
+      { k: 'wood', label: 'Holz pro Schlag', type: 'number', min: 0, max: 50, int: true },
+      { k: 'stone', label: 'Stein pro Schlag', type: 'number', min: 0, max: 50, int: true },
+      { k: 'food', label: 'Sättigung (Nahrung)', type: 'number', min: 0, max: 100 },
+      { k: 'heal', label: 'Heilung (Nahrung)', type: 'number', min: -100, max: 1000 },
+      { k: 'armor', label: 'Schutz in % (Rüstung)', type: 'number', min: 0, max: 80 },
+      { k: 'structure', label: 'Baut (Bauteil)', type: 'select', options: [{ v: '', l: '–' }, ...Object.entries(G.STRUCTURES).map(([v, l]) => ({ v, l }))] },
+    ],
+    toDoc: (v) => { const d = { ...v }; for (const k of ['damage', 'reach', 'wood', 'stone', 'food', 'heal', 'armor']) { if (d[k] === null || d[k] === '') delete d[k]; } if (!d.structure) delete d.structure; return d; },
+  });
+}
+function gRecipeForm(id) {
+  gEditDoc({
+    coll: 'game_recipes', id, title: id ? 'Rezept bearbeiten' : 'Neues Rezept', label: 'Rezept',
+    defaults: { item: Object.keys(S.game_items)[0] || '', amount: 1, ingredients: { holz: 1 }, level: 1, station: '', order: list('game_recipes').length + 1 },
+    fields: () => [
+      { k: 'item', label: 'Ergebnis', type: 'select', options: itemOpts(), req: true },
+      { k: 'amount', label: 'Menge', type: 'number', min: 1, max: 100, int: true, req: true },
+      { k: 'ingredients', label: 'Zutaten', full: true, req: true, hint: 'Format: holz:3, stein:2', check: mapCheck(() => Object.keys(S.game_items)) },
+      { k: 'level', label: 'Ab Level', type: 'number', min: 1, max: 100, int: true, req: true },
+      { k: 'station', label: 'Station', type: 'select', options: [{ v: '', l: 'Überall' }, { v: 'lagerfeuer', l: 'Lagerfeuer' }] },
+    ],
+    toDoc: (v) => ({ ...v, ingredients: parseMap(v.ingredients, Object.keys(S.game_items)) }),
+  });
+}
+function gQuestForm(id) {
+  gEditDoc({
+    coll: 'game_quests', id, title: id ? 'Quest bearbeiten' : 'Neue Quest', label: 'Quest',
+    defaults: { title: '', description: '', type: 'Sammeln', target: 'holz', count: 10, xp: 50, coins: 10, reward_item: '', reward_amount: 0, order: list('game_quests').length + 1 },
+    fields: () => [
+      { k: 'title', label: 'Titel', req: true, min: 2, max: 60, full: true },
+      { k: 'description', label: 'Beschreibung', type: 'textarea', max: 300, full: true, rows: 2 },
+      { k: 'type', label: 'Art', type: 'select', options: G.QUEST_TYPES },
+      { k: 'target', label: 'Ziel (id)', max: 40, hint: 'Gegenstand, Kreatur oder Bauteil, z. B. holz, graslaeufer, fundament; leer = beliebig' },
+      { k: 'count', label: 'Anzahl', type: 'number', min: 1, max: 100000, int: true, req: true },
+      { k: 'xp', label: 'Belohnung: Erfahrung', type: 'number', min: 0, max: 100000, int: true },
+      { k: 'coins', label: 'Belohnung: Münzen', type: 'number', min: 0, max: 100000, int: true },
+      { k: 'reward_item', label: 'Belohnung: Gegenstand', type: 'select', options: itemOpts('–') },
+      { k: 'reward_amount', label: 'Anzahl', type: 'number', min: 0, max: 1000, int: true },
+      { k: 'order', label: 'Reihenfolge', type: 'number', min: 0, max: 1000, int: true },
+    ],
+    toDoc: (v) => ({ ...v, xp: num0(v.xp), coins: num0(v.coins), reward_amount: num0(v.reward_amount), order: num0(v.order) }),
+  });
+}
+function gVehicleForm(id) {
+  gEditDoc({
+    coll: 'game_vehicles', id, title: id ? 'Fahrzeug bearbeiten' : 'Neues Fahrzeug', label: 'Fahrzeug',
+    defaults: { type: 'gelaendewagen', color: '#7C3AED', x: 0, z: 10, ry: 0, order: list('game_vehicles').length + 1 },
+    fields: () => [
+      { k: 'type', label: 'Typ', type: 'select', options: Object.entries(G.VEHICLES).map(([v, l]) => ({ v, l })) },
+      { k: 'color', label: 'Farbe', type: 'color' },
+      { k: 'x', label: 'Start x (−580 bis 580)', type: 'number', min: -580, max: 580, req: true },
+      { k: 'z', label: 'Start z (−580 bis 580)', type: 'number', min: -580, max: 580, req: true },
+      { k: 'ry', label: 'Richtung (Bogenmaß)', type: 'number', min: -7, max: 7, step: 0.1 },
+    ],
+    toDoc: (v) => ({ ...v, ry: num0(v.ry) }),
+  });
+}
+function gRulesForm() {
+  const s = gSettings(); if (!s) return;
+  const fields = [
+    { k: 'xp_multiplier', label: 'Erfahrung ×', type: 'number', min: 0, max: 100, step: 0.1, req: true },
+    { k: 'gather_multiplier', label: 'Sammeln ×', type: 'number', min: 0, max: 100, step: 0.1, req: true },
+    { k: 'damage_multiplier', label: 'Kreaturen-Schaden ×', type: 'number', min: 0, max: 10, step: 0.1, req: true },
+    { k: 'creature_multiplier', label: 'Kreaturen-Menge ×', type: 'number', min: 0, max: 5, step: 0.1, req: true },
+    { k: 'hunger_rate', label: 'Hunger-Tempo ×', type: 'number', min: 0, max: 10, step: 0.1, req: true },
+    { k: 'max_level', label: 'Max. Level', type: 'number', min: 1, max: 500, int: true, req: true },
+    { k: 'level_base', label: 'EP für Level 2', type: 'number', min: 1, max: 100000, int: true, req: true },
+    { k: 'level_exp', label: 'Level-Kurve (Exponent)', type: 'number', min: 1, max: 4, step: 0.05, req: true },
+    { k: 'start_coins', label: 'Start-Münzen', type: 'number', min: 0, max: 100000, int: true },
+    { k: 'max_players', label: 'Max. Spieler gleichzeitig', type: 'number', min: 1, max: 100, int: true, req: true },
+    { k: 'pvp', label: 'Spieler-Kämpfe', type: 'select', options: [{ v: 'nein', l: 'Aus' }, { v: 'ja', l: 'An' }] },
+    { k: 'admins', label: 'Admins (Namen, mit Komma getrennt)', max: 300, full: true },
+    { k: 'admin_code', label: 'Admin-Code', max: 40, hint: 'Brauchen Admins beim Anmelden im Spiel. Leer = niemand kann Admin werden.' },
+    { k: 'motd', label: 'Begrüßung im Spiel', type: 'textarea', max: 300, full: true, rows: 2 },
+  ];
+  openForm({
+    title: 'Spielregeln', fields, values: { ...s, pvp: s.pvp ? 'ja' : 'nein' },
+    onSubmit: async (v) => {
+      const doc = { ...v, pvp: v.pvp === 'ja', start_coins: num0(v.start_coins), version: (Number(s.version) || 1) + 1 };
+      const ok = await commit('game_settings', 'main', 'update', doc, { action: 'bearbeitet', type: 'Spielregeln', title: 'ECLIPSE', detail: diffDetail(fields, { ...s, pvp: s.pvp ? 'ja' : 'nein' }, v).text });
+      if (ok) toast('Regeln gespeichert – das Spiel übernimmt sie in wenigen Sekunden.');
+      return ok;
+    },
+  });
+}
+function gPlayerName(pid) { return (S.game_players[pid] && S.game_players[pid].name) || ((gStatus() || {}).online || []).find((o) => o.pid === pid)?.name || 'Spieler'; }
+function gPlayerEdit(pid) {
+  const p = S.game_players[pid] || {};
+  const fields = [
+    { k: 'level', label: 'Level', type: 'number', min: 1, max: 500, int: true, req: true },
+    { k: 'xp', label: 'Erfahrung', type: 'number', min: 0, max: 1e9, int: true, req: true },
+    { k: 'coins', label: 'Münzen', type: 'number', min: 0, max: 1e9, int: true, req: true },
+    { k: 'hp', label: 'Leben', type: 'number', min: 1, max: 100000, int: true, req: true },
+  ];
+  openForm({ title: `Werte von ${gPlayerName(pid)}`, fields, values: { level: p.level || 1, xp: p.xp || 0, coins: p.coins || 0, hp: Math.round(p.hp || 100) },
+    onSubmit: async (v) => gameCommand('set', { pid, ...v }, gPlayerName(pid), `Level ${v.level} · ${v.coins} Münzen`) });
+}
+function gGive(pid) {
+  openForm({ title: `${gPlayerName(pid)} etwas geben`, fields: [
+    { k: 'item', label: 'Gegenstand', type: 'select', options: itemOpts(), req: true },
+    { k: 'n', label: 'Anzahl', type: 'number', min: 1, max: 10000, int: true, req: true },
+  ], values: { item: 'holz', n: 10 }, submitLabel: 'Geben',
+  onSubmit: async (v) => gameCommand('give', { pid, item: v.item, n: v.n }, gPlayerName(pid), `${v.n}× ${gName('game_items', v.item)}`) });
+}
+
+Object.assign(ACTIONS_EXTRA, {
+  'g-tab': (id, el) => { UI.gameTab = el.dataset.k; UI.anim = true; scheduleRender(); },
+  'g-msg': () => openForm({ title: 'Ansage an alle Spieler', fields: [{ k: 'text', label: 'Nachricht', req: true, min: 2, max: 200, full: true }], values: { text: '' }, submitLabel: 'Senden', onSubmit: async (v) => gameCommand('msg', { text: v.text }, 'Ansage', v.text) }),
+  'g-respawn': async () => { if (await confirmDialog({ title: 'Kreaturen neu verteilen?', html: 'Alle wilden Kreaturen verschwinden und erscheinen an neuen Orten. Gezähmte bleiben.', ok: 'Neu verteilen', danger: false })) gameCommand('respawn_creatures', {}, 'Kreaturen neu verteilt'); },
+  'g-vreset': async () => { if (await confirmDialog({ title: 'Fahrzeuge zurücksetzen?', html: 'Alle Fahrzeuge kehren an ihre Startpositionen zurück. Wer gerade fährt, steigt aus.', ok: 'Zurücksetzen', danger: false })) gameCommand('reset_vehicles', {}, 'Fahrzeuge zurückgesetzt'); },
+  'g-wipe': async () => { if (await confirmDialog({ title: 'Alle Bauwerke entfernen?', html: `<b>${Object.keys(S.game_buildings).length} Bauteile</b> aller Spieler werden gelöscht. Das lässt sich nicht rückgängig machen.` })) gameCommand('remove_all_buildings', {}, 'Alle Bauwerke entfernt'); },
+  'g-bwipe': async (pid) => { const n = list('game_buildings').filter((b) => b.owner === pid).length; if (await confirmDialog({ title: 'Bauwerke entfernen?', html: `<b>${n} Bauteile</b> dieses Spielers werden gelöscht.` })) gameCommand('remove_buildings_of', { owner: pid }, 'Bauwerke entfernt', `${n} Bauteile`); },
+  'g-give': (pid) => gGive(pid),
+  'g-heal': (pid) => gameCommand('heal', { pid }, gPlayerName(pid), 'geheilt'),
+  'g-tp': (pid) => gameCommand('teleport', { pid }, gPlayerName(pid), 'zum Startplatz'),
+  'g-kick': async (pid) => { if (await confirmDialog({ title: 'Spieler entfernen?', html: `<b>${esc(gPlayerName(pid))}</b> wird aus dem laufenden Spiel geworfen (kann wieder beitreten).`, ok: 'Entfernen' })) gameCommand('kick', { pid }, gPlayerName(pid), 'entfernt'); },
+  'g-pedit': (pid) => gPlayerEdit(pid),
+  'g-preset': async (pid) => { if (await confirmDialog({ title: 'Spielstand zurücksetzen?', html: `Level, Inventar und Quests von <b>${esc(gPlayerName(pid))}</b> werden auf den Anfang gesetzt.`, ok: 'Zurücksetzen' })) gameCommand('reset', { pid }, gPlayerName(pid), 'Spielstand zurückgesetzt'); },
+  'g-sp-new': () => gSpeciesForm(null), 'g-sp-edit': (id) => gSpeciesForm(id), 'g-sp-del': (id) => gDeleteDoc('game_species', id, 'Kreatur'),
+  'g-it-new': () => gItemForm(null), 'g-it-edit': (id) => gItemForm(id), 'g-it-del': (id) => gDeleteDoc('game_items', id, 'Gegenstand'),
+  'g-re-new': () => gRecipeForm(null), 'g-re-edit': (id) => gRecipeForm(id), 'g-re-del': (id) => gDeleteDoc('game_recipes', id, 'Rezept'),
+  'g-qu-new': () => gQuestForm(null), 'g-qu-edit': (id) => gQuestForm(id), 'g-qu-del': (id) => gDeleteDoc('game_quests', id, 'Quest'),
+  'g-ve-new': () => gVehicleForm(null), 'g-ve-edit': (id) => gVehicleForm(id), 'g-ve-del': (id) => gDeleteDoc('game_vehicles', id, 'Fahrzeug'),
+  'g-rules': () => gRulesForm(),
+});
+
+const VIEWS = { spiel: vSpiel, dashboard: vDashboard, phasen: vPhasen, aufgaben: vAufgaben, bereiche: vBereiche, bereich: vBereich, team: vTeam, technik: vTechnik, aktivitaet: vAktivitaet };
 
 /* =========================================================
    Modale Dialoge
@@ -1962,6 +2318,7 @@ const ACTIONS = {
   'nav-open': () => document.body.classList.add('nav-open'),
   'nav-close': () => document.body.classList.remove('nav-open'),
 };
+Object.assign(ACTIONS, ACTIONS_EXTRA);
 const CHANGES = {
   'filter': (v, el) => { UI.f[el.dataset.k] = v; scheduleRender(); },
   'act-filter': (v, el) => { UI.act[el.dataset.k] = v; scheduleRender(); },

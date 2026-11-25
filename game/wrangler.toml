@@ -1,6 +1,7 @@
 name = "spiel"
 main = "worker.js"
 compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
 [assets]
@@ -15,3 +16,9 @@ class_name = "Room"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
+
+# Dieselbe Datenbank wie das Dashboard: Einstellungen, Spielstände und Befehle werden geteilt.
+[[d1_databases]]
+binding = "DB"
+database_name = "eclipse-db"
+database_id = "__D1_DATABASE_ID__"
