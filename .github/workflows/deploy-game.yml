@@ -1,0 +1,108 @@
+name: Deploy ECLIPSE Arena (Spiel)
+
+on:
+  push:
+    branches:
+      - main
+      - claude/quirky-einstein-3k0l4p
+    paths:
+      - 'game/**'
+      - '.github/workflows/deploy-game.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-game
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: game
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Secret prüfen
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Das Repository-Secret CLOUDFLARE_API_TOKEN fehlt (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - name: Wrangler installieren
+        run: npm install --no-save --no-audit --no-fund wrangler@4
+
+      - name: Spielcode prüfen
+        run: |
+          node --check src/index.js && node --check src/room.js
+          for f in public/js/*.js public/shared/*.js; do node --check "$f"; done
+          node --input-type=module -e "
+            import { BOXES, SPAWNS } from './public/shared/map.js';
+            import { hitBox } from './public/shared/physics.js';
+            const bad = SPAWNS.filter(([x, z]) => hitBox([x, 0, z], BOXES));
+            if (bad.length) { console.error('Startpunkte in Wänden:', bad); process.exit(1); }
+            console.log(BOXES.length, 'Boxen,', SPAWNS.length, 'Startpunkte – ok');"
+
+      - name: D1-Datenbank sicherstellen
+        run: |
+          find_db() {
+            npx wrangler d1 list --json 2>/dev/null | node -e '
+              let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+                const i = s.indexOf("["); if (i < 0) return;
+                const db = JSON.parse(s.slice(i)).find(x => x.name === "eclipse-game-db");
+                if (db) process.stdout.write(db.uuid || db.id || "");
+              });'
+          }
+          DB_ID="$(find_db)"
+          if [ -z "$DB_ID" ]; then
+            echo "Lege D1-Datenbank eclipse-game-db an …"
+            npx wrangler d1 create eclipse-game-db
+            DB_ID="$(find_db)"
+          fi
+          if [ -z "$DB_ID" ]; then echo "::error::D1-Datenbank konnte nicht gefunden oder angelegt werden. Hat der Token das Recht D1: Edit?"; exit 1; fi
+          sed -i "s/__D1_DATABASE_ID__/$DB_ID/" wrangler.toml
+          echo "D1-Datenbank: $DB_ID"
+
+      - name: workers.dev-Subdomain ermitteln
+        env:
+          WANTED_SUBDOMAIN: ${{ vars.WORKERS_SUBDOMAIN || 'dinnerboneagg' }}
+        run: |
+          API=https://api.cloudflare.com/client/v4
+          AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          ACC="$CLOUDFLARE_ACCOUNT_ID"
+          if [ -z "$ACC" ]; then
+            ACC="$(curl -fsS -H "$AUTH" "$API/accounts?per_page=5" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s).result||[];process.stdout.write(r[0]?r[0].id:"")})')"
+          fi
+          if [ -z "$ACC" ]; then echo "::error::Cloudflare-Konto nicht gefunden. Lege das Secret CLOUDFLARE_ACCOUNT_ID an."; exit 1; fi
+          CUR="$(curl -sS -H "$AUTH" "$API/accounts/$ACC/workers/subdomain" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);process.stdout.write((j.result&&j.result.subdomain)||"")}catch{}})')"
+          if [ -z "$CUR" ]; then
+            RES="$(curl -sS -X PUT -H "$AUTH" -H 'Content-Type: application/json' --data "{\"subdomain\":\"$WANTED_SUBDOMAIN\"}" "$API/accounts/$ACC/workers/subdomain")"
+            if echo "$RES" | grep -Eq '"success": *true'; then CUR="$WANTED_SUBDOMAIN"; else echo "$RES" | head -c 400; echo "::error::Keine workers.dev-Subdomain vorhanden und $WANTED_SUBDOMAIN konnte nicht angelegt werden."; exit 1; fi
+          fi
+          echo "Subdomain: $CUR.workers.dev"
+          echo "SUBDOMAIN=$CUR" >> "$GITHUB_ENV"
+
+      - name: Spiel veröffentlichen
+        run: |
+          npx wrangler deploy
+          URL="https://eclipse-game.$SUBDOMAIN.workers.dev"
+          echo "::notice title=Spiel online::$URL"
+          echo "### 🎮 ECLIPSE Arena ist online: $URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Kurzer Test der Live-Seite
+        run: |
+          URL="https://eclipse-game.$SUBDOMAIN.workers.dev"
+          for i in 1 2 3 4 5 6; do
+            CODE="$(curl -s -o /tmp/rooms.json -w '%{http_code}' "$URL/api/rooms" || true)"
+            if [ "$CODE" = "200" ]; then echo "API antwortet: $(cat /tmp/rooms.json)"; exit 0; fi
+            echo "Noch nicht erreichbar (HTTP $CODE), neuer Versuch …"; sleep 10
+          done
+          echo "::warning::Die Seite antwortet noch nicht. Neue workers.dev-Adressen brauchen manchmal ein paar Minuten."

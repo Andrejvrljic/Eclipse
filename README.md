@@ -1,3 +1,40 @@
+# ECLIPSE Arena – das Spiel 🎮
+
+3D-Multiplayer-Shooter im Browser (Ordner `game/`): Accounts mit Passwort, Rangliste, Level/XP,
+drei Waffen, Bots, Chat und mehrere Räume.
+
+**Spiel-Link:** https://eclipse-game.dinnerboneagg.workers.dev (wird vom Workflow automatisch veröffentlicht)
+
+| Teil | Technik |
+| --- | --- |
+| Grafik | Three.js (WebGL) im Browser, keine Installation nötig |
+| Server / Multiplayer | Cloudflare Worker + **Durable Objects** (ein Objekt pro Raum, WebSockets, 20 Updates/s) |
+| Datenbank | Cloudflare **D1** (`eclipse-game-db`): Accounts, Sitzungen, Statistik, Match-Verlauf |
+| Veröffentlichung | GitHub Actions: `.github/workflows/deploy-game.yml` |
+
+**Was du einrichten musst:** nichts Neues. Der Workflow nutzt dasselbe Secret `CLOUDFLARE_API_TOKEN` wie die
+Dev-Plattform und legt die Datenbank `eclipse-game-db` beim ersten Lauf selbst an. Die Tabellen erstellt der
+Worker beim ersten Aufruf.
+
+- Modus: Jeder gegen jeden, 6 Minuten oder 25 Kills. Bots füllen Räume mit weniger als 4 Spielern auf.
+- Der Server ist Schiedsrichter: Er prüft Bewegungen (kein Durch-die-Wand-Laufen) und berechnet jeden Treffer
+  selbst, mit Lag-Ausgleich.
+- Passwörter werden mit PBKDF2 (100 000 Runden, Salt) gespeichert; die Anmeldung läuft über ein HttpOnly-Cookie.
+- Kostenloser Cloudflare-Plan reicht zum Spielen mit Freunden (grob 30 Spielerstunden pro Tag);
+  für mehr: Workers Paid (5 $/Monat).
+
+Lokal testen: `cd game && npm run dev` → http://localhost:8787
+
+| Datei | Zweck |
+| --- | --- |
+| `game/src/index.js` | Worker: Registrierung, Login, Rangliste, Raumliste, WebSocket-Zugang |
+| `game/src/room.js` | Spielraum (Durable Object): Spielschleife, Treffer, Bots, Statistik → D1 |
+| `game/public/shared/` | Karte, Physik und Waffenwerte – gleich für Browser und Server |
+| `game/public/js/game.js` | 3D-Welt, Steuerung, Waffen, Netzwerk |
+| `game/public/js/main.js` | Menüs, Anmeldung, Einstellungen |
+
+---
+
 # ECLIPSE – Dev Platform
 
 Gemeinsames Projekt-Dashboard für die Entwicklung des 3D-Open-World-Multiplayer-Spiels **ECLIPSE**.

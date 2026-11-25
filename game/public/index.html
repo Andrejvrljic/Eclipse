@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07060d">
+<title>ECLIPSE Arena</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3Cmask id='m'%3E%3Crect width='40' height='40' fill='%23fff'/%3E%3Ccircle cx='25.5' cy='15' r='12'/%3E%3C/mask%3E%3C/defs%3E%3Ccircle cx='19' cy='21' r='14' fill='%23A78BFA' mask='url(%23m)'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<!-- ===================== HUD ===================== -->
+<div id="hud" hidden>
+  <div id="vignette"></div>
+  <div id="scope" hidden></div>
+  <div id="crosshair"><i></i><i></i><i></i><i></i></div>
+  <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+  <div id="dmgdirs"></div>
+  <div id="topbar">
+    <div class="tb-score"><span id="tb-me">0</span><small>DU</small></div>
+    <div class="tb-mid"><div id="tb-timer">6:00</div><small id="tb-goal">Erster bis 25</small></div>
+    <div class="tb-score"><span id="tb-lead">0</span><small id="tb-lead-name">FÜHRUNG</small></div>
+  </div>
+  <div id="killfeed"></div>
+  <div id="chatlog"></div>
+  <input id="chatinput" maxlength="120" placeholder="Nachricht … (Enter senden, Esc abbrechen)" autocomplete="off" hidden>
+  <div id="bottomleft">
+    <div id="hp"><div id="hp-fill"></div><span id="hp-num">100</span></div>
+    <div id="prot" hidden>Spawn-Schutz</div>
+  </div>
+  <div id="bottomright">
+    <div id="weapons"></div>
+    <div id="ammo"><span id="ammo-cur">30</span><small>/ <span id="ammo-max">30</span></small></div>
+    <div id="reloadhint" hidden>[R] Nachladen</div>
+  </div>
+  <div id="netinfo"></div>
+  <div id="centermsg"></div>
+  <div id="death" hidden>
+    <div class="death-title">AUSGESCHALTET</div>
+    <div id="death-by"></div>
+    <div id="death-timer"></div>
+  </div>
+  <div id="scoreboard" hidden>
+    <div class="sb-head"><span id="sb-room">Raum</span><span id="sb-time"></span></div>
+    <table><thead><tr><th>Spieler</th><th>Kills</th><th>Tode</th><th>Ping</th></tr></thead><tbody id="sb-body"></tbody></table>
+  </div>
+  <div id="endscreen" hidden>
+    <div class="end-card">
+      <div class="end-kicker">MATCH VORBEI</div>
+      <div id="end-winner"></div>
+      <table><tbody id="end-body"></tbody></table>
+      <div id="end-next"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== Anmeldung ===================== -->
+<section id="screen-auth" class="screen" hidden>
+  <div class="brand"><div class="logo"></div><h1>ECLIPSE <span>ARENA</span></h1><p>3D-Multiplayer-Shooter im Browser</p></div>
+  <form id="auth-form" class="card">
+    <div class="tabs"><button type="button" data-mode="login" class="on">Anmelden</button><button type="button" data-mode="register">Registrieren</button></div>
+    <label>Spielername<input name="username" autocomplete="username" minlength="3" maxlength="16" required></label>
+    <label>Passwort<input name="password" type="password" autocomplete="current-password" minlength="6" required></label>
+    <label class="reg-only" hidden>Passwort wiederholen<input name="password2" type="password" autocomplete="new-password" minlength="6"></label>
+    <div id="auth-err" class="err"></div>
+    <button class="btn primary" id="auth-submit">Anmelden</button>
+    <p class="fine">Dein Account speichert Kills, Siege, XP und Level in der Datenbank.</p>
+  </form>
+</section>
+
+<!-- ===================== Hauptmenü ===================== -->
+<section id="screen-menu" class="screen" hidden>
+  <header class="menu-head">
+    <div class="brand small"><div class="logo"></div><h1>ECLIPSE <span>ARENA</span></h1></div>
+    <div class="who"><span id="who-swatch"></span><b id="who-name"></b><span id="who-level" class="lvl"></span><button class="btn ghost" id="btn-logout">Abmelden</button></div>
+  </header>
+  <nav class="menu-tabs">
+    <button data-tab="play" class="on">Spielen</button>
+    <button data-tab="ranks">Rangliste</button>
+    <button data-tab="profile">Profil</button>
+    <button data-tab="help">Steuerung</button>
+  </nav>
+  <div class="menu-body">
+    <div class="tab" data-tab="play">
+      <div id="rooms" class="rooms"></div>
+      <form id="custom-room" class="card row">
+        <label>Eigener Raum (Code für Freunde)<input id="room-code" maxlength="24" placeholder="z. B. klasse-7b" pattern="[a-zA-Z0-9-]{1,24}"></label>
+        <button class="btn">Beitreten</button>
+      </form>
+      <p class="fine" id="touch-note" hidden>Hinweis: Zum Spielen brauchst du Maus und Tastatur.</p>
+    </div>
+    <div class="tab" data-tab="ranks" hidden>
+      <div class="card"><h3>Top-Spieler</h3><table class="list"><thead><tr><th>#</th><th>Spieler</th><th>Lvl</th><th>XP</th><th>Kills</th><th>K/D</th><th>Siege</th></tr></thead><tbody id="lb-body"></tbody></table></div>
+      <div class="card"><h3>Letzte Matches</h3><div id="lb-matches"></div></div>
+    </div>
+    <div class="tab" data-tab="profile" hidden>
+      <div class="card"><h3>Statistik</h3><div id="stats" class="stats"></div><div class="xpbar"><div id="xp-fill"></div></div><p class="fine" id="xp-text"></p></div>
+      <div class="card"><h3>Farbe deiner Figur</h3><div id="colors" class="colors"></div></div>
+    </div>
+    <div class="tab" data-tab="help" hidden>
+      <div class="card keys">
+        <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Laufen</div>
+        <div><kbd>Maus</kbd> Zielen · <kbd>Links</kbd> Schießen · <kbd>Rechts</kbd> Zoom</div>
+        <div><kbd>Leertaste</kbd> Springen · <kbd>Shift</kbd> Sprinten</div>
+        <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> / <kbd>Mausrad</kbd> / <kbd>Q</kbd> Waffe wechseln</div>
+        <div><kbd>R</kbd> Nachladen · <kbd>Tab</kbd> Punktestand · <kbd>Enter</kbd> Chat · <kbd>Esc</kbd> Menü</div>
+        <p class="fine">Modus: Jeder gegen jeden. Wer zuerst 25 Kills hat (oder nach 6 Minuten vorne liegt), gewinnt.
+          Kill = 100 XP, Kopfschuss +25, Sieg +500, Match gespielt +50. Bots füllen leere Räume auf (sie zählen nicht für die Statistik).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== Pause ===================== -->
+<section id="screen-pause" class="screen dim" hidden>
+  <div class="card pause">
+    <h2>Pause</h2>
+    <button class="btn primary" id="btn-resume">Weiterspielen</button>
+    <label>Maus-Empfindlichkeit <output id="o-sens"></output><input type="range" id="s-sens" min="0.2" max="3" step="0.05"></label>
+    <label>Sichtfeld (FOV) <output id="o-fov"></output><input type="range" id="s-fov" min="65" max="105" step="1"></label>
+    <label>Lautstärke <output id="o-vol"></output><input type="range" id="s-vol" min="0" max="1" step="0.05"></label>
+    <label class="check"><input type="checkbox" id="s-invert"> Maus-Y invertieren</label>
+    <button class="btn ghost" id="btn-leave">Match verlassen</button>
+  </div>
+</section>
+
+<div id="loading" class="screen"><div class="logo spin"></div></div>
+<div id="toast" hidden></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

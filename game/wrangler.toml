@@ -1,0 +1,23 @@
+name = "eclipse-game"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# database_id wird im GitHub-Actions-Workflow eingesetzt (die Datenbank wird dort bei Bedarf angelegt).
+[[d1_databases]]
+binding = "DB"
+database_name = "eclipse-game-db"
+database_id = "__D1_DATABASE_ID__"
+
+# Spielräume: ein Durable Object pro Raum (SQLite-Klasse = im kostenlosen Plan erlaubt)
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "GameRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom"]
