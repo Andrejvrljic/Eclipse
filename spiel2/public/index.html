@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050507">
+<meta name="robots" content="noindex">
+<title>Neues Spiel · Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='6' y='6' width='28' height='28' rx='8' fill='%2338BDF8'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #050507; --panel: #0d0d12; --panel2: #13131a; --line: #23232e;
+  --text: #ececf1; --muted: #8b8b9a; --accent: #38bdf8; --accent2: #a78bfa;
+  --ok: #34d399; --bad: #f87171; --warn: #fbbf24;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 24px; }
+.logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+h1 { font-size: 22px; margin: 0; letter-spacing: .02em; }
+.sub { color: var(--muted); font-size: 13px; }
+.pill { margin-left: auto; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.ok { background: var(--ok); box-shadow: 0 0 10px var(--ok); } .dot.bad { background: var(--bad); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.card .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.card .v { font-size: 24px; font-weight: 650; margin-top: 4px; overflow-wrap: anywhere; }
+.card .v.small { font-size: 15px; font-weight: 500; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; min-width: 0; }
+section h2 { font-size: 16px; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.notice { border-color: #1e3a4a; background: linear-gradient(180deg, #0b1a22, var(--panel)); }
+.notice p { margin: 0; color: #cfe8f5; }
+button, .btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; font: inherit; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #04121a; font-weight: 600; }
+button.danger:hover { border-color: var(--bad); color: var(--bad); }
+input, textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: 13px var(--mono); }
+textarea { min-height: 90px; resize: vertical; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row > * { flex: 1 1 160px; }
+.row > button { flex: 0 0 auto; }
+.out { font: 12.5px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 10px; }
+.out.ok { color: var(--ok); } .out.bad { color: var(--bad); }
+.split { display: grid; grid-template-columns: 220px 1fr; gap: 14px; }
+@media (max-width: 720px) { .split { grid-template-columns: 1fr; } .pill { margin-left: 0; } }
+.colls { display: flex; flex-direction: column; gap: 6px; }
+.colls button { text-align: left; display: flex; justify-content: space-between; gap: 8px; }
+.colls button.on { border-color: var(--accent); background: #0b1a22; }
+.colls .n { color: var(--muted); font-size: 12px; }
+.docs { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.doc { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel2); min-width: 0; }
+.doc .top { display: flex; align-items: center; gap: 10px; }
+.doc .id { font: 600 13px var(--mono); overflow-wrap: anywhere; }
+.doc .t { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+.doc pre { margin: 8px 0 0; font: 12px/1.45 var(--mono); color: #b9b9c6; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td { padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+td:first-child { font: 600 12px var(--mono); color: var(--accent); white-space: nowrap; width: 70px; }
+td code { font: 12px var(--mono); overflow-wrap: anywhere; }
+.tbl { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true"></div>
+    <div>
+      <h1>Neues Spiel</h1>
+      <div class="sub">Arbeitsname <code>spiel2</code> · Dashboard für Datenbank &amp; API</div>
+    </div>
+    <div class="pill"><span class="dot" id="dot"></span><span id="pillText">Prüfe Verbindung …</span></div>
+  </header>
+
+  <section class="notice">
+    <p><strong>Infrastruktur steht.</strong> Webseite, API und Datenbank laufen. Das eigentliche Spiel wird hier eingebaut, sobald feststeht, was es wird.</p>
+  </section>
+
+  <div class="grid">
+    <div class="card"><div class="k">Datenbank</div><div class="v" id="sDb">–</div></div>
+    <div class="card"><div class="k">Einträge</div><div class="v" id="sCount">–</div></div>
+    <div class="card"><div class="k">Sammlungen</div><div class="v" id="sColls">–</div></div>
+    <div class="card"><div class="k">Schreibschutz</div><div class="v small" id="sWrite">–</div></div>
+  </div>
+
+  <section>
+    <h2>Datenbank testen</h2>
+    <div class="row">
+      <button class="primary" id="btnTest">Schreiben &amp; Lesen testen</button>
+      <span class="sub">Legt <code>test/ping</code> an und liest es wieder aus.</span>
+    </div>
+    <div class="out" id="testOut"></div>
+  </section>
+
+  <section>
+    <h2>Daten <button id="btnReload" style="margin-left:auto">Aktualisieren</button></h2>
+    <div class="split">
+      <div class="colls" id="colls"><div class="empty">Noch keine Sammlungen.</div></div>
+      <div class="docs" id="docs"><div class="empty">Sammlung links auswählen.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Dokument speichern</h2>
+    <div class="row">
+      <input id="fColl" placeholder="Sammlung, z. B. players" autocomplete="off">
+      <input id="fId" placeholder="ID, z. B. spieler-1" autocomplete="off">
+    </div>
+    <div style="margin-top:10px"><textarea id="fData" spellcheck="false">{ "name": "Testspieler", "level": 1 }</textarea></div>
+    <div class="row" style="margin-top:10px">
+      <input id="fKey" type="password" placeholder="Schreibschlüssel (nur falls WRITE_KEY gesetzt ist)" autocomplete="off">
+      <button class="primary" id="btnSave">Speichern</button>
+    </div>
+    <div class="out" id="saveOut"></div>
+  </section>
+
+  <section>
+    <h2>API</h2>
+    <div class="sub" style="margin-bottom:8px">Basisadresse: <code id="base"></code></div>
+    <div class="tbl"><table>
+      <tr><td>GET</td><td><code>/api/status</code> – Status &amp; Sammlungen</td></tr>
+      <tr><td>GET</td><td><code>/api/docs?since=&lt;zeit&gt;</code> – Änderungen seit Zeitpunkt (Live-Abgleich)</td></tr>
+      <tr><td>GET</td><td><code>/api/docs/&lt;sammlung&gt;</code> – alle Dokumente</td></tr>
+      <tr><td>GET</td><td><code>/api/docs/&lt;sammlung&gt;/&lt;id&gt;</code> – ein Dokument</td></tr>
+      <tr><td>PUT</td><td><code>/api/docs/&lt;sammlung&gt;/&lt;id&gt;</code> – anlegen / ersetzen (JSON-Body)</td></tr>
+      <tr><td>PATCH</td><td><code>/api/docs/&lt;sammlung&gt;/&lt;id&gt;</code> – Felder ändern</td></tr>
+      <tr><td>DELETE</td><td><code>/api/docs/&lt;sammlung&gt;/&lt;id&gt;</code> – löschen</td></tr>
+    </table></div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+let current = null;
+let lastStatus = null;
+
+$('base').textContent = location.origin + '/api';
+$('fKey').value = ls.get('writeKey') || '';
+
+function headers() {
+  const h = { 'content-type': 'application/json' };
+  const k = $('fKey').value.trim();
+  if (k) h['x-write-key'] = k;
+  return h;
+}
+async function api(path, opts = {}) {
+  const r = await fetch('api/' + path, { cache: 'no-store', ...opts });
+  let body = null;
+  try { body = await r.json(); } catch {}
+  if (!r.ok) throw new Error((body && body.error) || ('HTTP ' + r.status));
+  return body;
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const when = (t) => t ? new Date(t).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'medium' }) : '';
+
+async function loadStatus() {
+  try {
+    const s = await api('status');
+    lastStatus = s;
+    $('dot').className = 'dot ok';
+    $('pillText').textContent = 'Online · ' + s.latency_ms + ' ms';
+    $('sDb').textContent = 'Verbunden';
+    $('sDb').style.color = 'var(--ok)';
+    $('sCount').textContent = s.collections.reduce((a, c) => a + c.count, 0);
+    $('sColls').textContent = s.collections.length;
+    $('sWrite').textContent = s.write_protected ? 'An (Schlüssel nötig)' : 'Aus (offen)';
+    renderColls(s.collections);
+  } catch (e) {
+    $('dot').className = 'dot bad';
+    $('pillText').textContent = 'Keine Verbindung';
+    $('sDb').textContent = 'Fehler';
+    $('sDb').style.color = 'var(--bad)';
+  }
+}
+
+function renderColls(list) {
+  const box = $('colls');
+  if (!list.length) { box.innerHTML = '<div class="empty">Noch keine Sammlungen.</div>'; return; }
+  box.innerHTML = list.map((c) => `<button data-c="${esc(c.name)}" class="${c.name === current ? 'on' : ''}"><span>${esc(c.name)}</span><span class="n">${c.count}</span></button>`).join('');
+  box.querySelectorAll('button').forEach((b) => b.onclick = () => { current = b.dataset.c; renderColls(list); loadDocs(); });
+  if (current && !list.some((c) => c.name === current)) { current = null; $('docs').innerHTML = '<div class="empty">Sammlung links auswählen.</div>'; }
+}
+
+async function loadDocs() {
+  if (!current) return;
+  const box = $('docs');
+  try {
+    const { docs } = await api('docs/' + encodeURIComponent(current));
+    if (!docs.length) { box.innerHTML = '<div class="empty">Leer.</div>'; return; }
+    box.innerHTML = docs.map((d) => {
+      const { id, _updated, ...rest } = d;
+      return `<div class="doc"><div class="top"><span class="id">${esc(id)}</span><span class="t">${when(_updated)}</span><button class="danger" data-id="${esc(id)}">Löschen</button></div><pre>${esc(JSON.stringify(rest, null, 2))}</pre></div>`;
+    }).join('');
+    box.querySelectorAll('button[data-id]').forEach((b) => b.onclick = async () => {
+      if (!confirm(`„${current}/${b.dataset.id}“ wirklich löschen?`)) return;
+      try { await api('docs/' + encodeURIComponent(current) + '/' + encodeURIComponent(b.dataset.id), { method: 'DELETE', headers: headers() }); }
+      catch (e) { alert(e.message); }
+      refresh();
+    });
+  } catch (e) {
+    box.innerHTML = `<div class="out bad">${esc(e.message)}</div>`;
+  }
+}
+
+async function refresh() { await loadStatus(); await loadDocs(); }
+
+$('btnTest').onclick = async () => {
+  const out = $('testOut');
+  out.className = 'out'; out.textContent = 'Teste …';
+  const value = { message: 'Hallo Datenbank', at: new Date().toISOString(), random: Math.random().toString(36).slice(2, 8) };
+  try {
+    const t0 = performance.now();
+    await api('docs/test/ping', { method: 'PUT', headers: headers(), body: JSON.stringify(value) });
+    const back = await api('docs/test/ping');
+    const ms = Math.round(performance.now() - t0);
+    const same = back.random === value.random;
+    out.className = 'out ' + (same ? 'ok' : 'bad');
+    out.textContent = (same ? '✓ Datenbank funktioniert' : '✗ Gelesener Wert stimmt nicht') + ` (${ms} ms)\n` + JSON.stringify(back, null, 2);
+    current = 'test';
+    refresh();
+  } catch (e) {
+    out.className = 'out bad'; out.textContent = '✗ ' + e.message;
+  }
+};
+
+$('btnSave').onclick = async () => {
+  const out = $('saveOut');
+  const coll = $('fColl').value.trim(), id = $('fId').value.trim();
+  ls.set('writeKey', $('fKey').value.trim());
+  let data;
+  try { data = JSON.parse($('fData').value); } catch { out.className = 'out bad'; out.textContent = '✗ Kein gültiges JSON'; return; }
+  if (!coll || !id) { out.className = 'out bad'; out.textContent = '✗ Sammlung und ID angeben'; return; }
+  try {
+    await api('docs/' + encodeURIComponent(coll) + '/' + encodeURIComponent(id), { method: 'PUT', headers: headers(), body: JSON.stringify(data) });
+    out.className = 'out ok'; out.textContent = `✓ Gespeichert: ${coll}/${id}`;
+    current = coll;
+    refresh();
+  } catch (e) {
+    out.className = 'out bad'; out.textContent = '✗ ' + e.message;
+  }
+};
+
+$('btnReload').onclick = refresh;
+refresh();
+setInterval(() => { if (!document.hidden) refresh(); }, 8000);
+</script>
+</body>
+</html>
