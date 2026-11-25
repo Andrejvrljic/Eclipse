@@ -1,0 +1,71 @@
+name: Deploy ECLIPSE Dev Platform
+
+on:
+  push:
+    branches:
+      - main
+      - claude/eclipse-dev-platform-a6kogw
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Secret prüfen
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Das Repository-Secret CLOUDFLARE_API_TOKEN fehlt (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - name: Wrangler installieren
+        run: npm install --no-save wrangler@4
+
+      - name: Seite bauen
+        run: node scripts/build.mjs
+
+      - name: D1-Datenbank sicherstellen
+        run: |
+          find_db() {
+            npx wrangler d1 list --json 2>/dev/null | node -e '
+              let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+                const i = s.indexOf("["); if (i < 0) return;
+                const db = JSON.parse(s.slice(i)).find(x => x.name === "eclipse-db");
+                if (db) process.stdout.write(db.uuid || db.id || "");
+              });'
+          }
+          DB_ID="$(find_db)"
+          if [ -z "$DB_ID" ]; then
+            echo "Lege D1-Datenbank eclipse-db an …"
+            npx wrangler d1 create eclipse-db
+            DB_ID="$(find_db)"
+          fi
+          if [ -z "$DB_ID" ]; then echo "::error::D1-Datenbank konnte nicht gefunden oder angelegt werden. Hat der Token das Recht D1: Edit?"; exit 1; fi
+          sed -i "s/__D1_DATABASE_ID__/$DB_ID/" wrangler.toml
+          echo "D1-Datenbank: $DB_ID"
+
+      - name: Worker veröffentlichen
+        run: npx wrangler deploy
+
+      - name: Team-Schlüssel setzen (optional)
+        env:
+          TEAM_KEY: ${{ secrets.TEAM_KEY }}
+        run: |
+          if [ -n "$TEAM_KEY" ]; then
+            printf '%s' "$TEAM_KEY" | npx wrangler secret put TEAM_KEY
+          else
+            echo "Kein TEAM_KEY gesetzt: Die Plattform ist für alle mit dem Link bearbeitbar."
+          fi

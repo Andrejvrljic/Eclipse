@@ -20,6 +20,7 @@
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{background:var(--bg);color:var(--text)}
 body{margin:0;font:14px/1.5 var(--fb);-webkit-font-smoothing:antialiased;min-height:100vh;
   background-color:var(--bg);
@@ -808,6 +809,7 @@ function errText(e) {
   if (c === 'quota_exceeded') return 'Der Speicher der Plattform ist voll. Lösche alte Einträge und versuche es erneut.';
   if (c === 'resource_exhausted') return 'Zu viele Änderungen in kurzer Zeit. Warte einen Moment und versuche es erneut.';
   if (c === 'revoked') return 'Der Zugriff auf die Daten wurde entzogen.';
+  if (c === 'unauthorized') return 'Der Team-Schlüssel fehlt oder ist falsch.';
   return 'Speichern fehlgeschlagen. Prüfe die Verbindung und versuche es erneut.';
 }
 async function withRetry(fn) {
@@ -872,10 +874,91 @@ function syncDerived(phaseIds, areaIds) {
 /* =========================================================
    Datenbank verbinden
    ========================================================= */
+/**
+ * Datenbank über die eigene Server-API (Cloudflare Worker + D1), wenn die Seite
+ * außerhalb von claude.ai läuft. Bietet dieselbe Schnittstelle wie der claude.ai-Speicher
+ * (collection/doc/set/update/delete/onSnapshot) und gleicht per Polling ab.
+ */
+async function restDb() {
+  const BASE = 'api/docs';
+  try {
+    const r = await fetch(BASE + '?since=' + Date.now(), { cache: 'no-store', headers: { 'x-team-key': ls.get('teamKey') || '' } });
+    if (r.status !== 401 && !(r.ok && (r.headers.get('content-type') || '').includes('json'))) return null;
+  } catch { return null; }
+  const mirror = {}; const subs = []; let cursor = 0; let first = null; let timer = 0; let fails = 0; let askClose = null;
+  const req = async (method, url, body) => {
+    let r; const usedKey = ls.get('teamKey') || '';
+    try { r = await fetch(url, { method, cache: 'no-store', headers: { 'content-type': 'application/json', 'x-team-key': usedKey }, body: body ? JSON.stringify(body) : undefined }); }
+    catch { throw { code: 'unavailable', message: 'network' }; }
+    if (r.status === 401) { if (usedKey === (ls.get('teamKey') || '')) askTeamKey(!!usedKey); throw { code: 'unauthorized', message: 'team key' }; }
+    if (r.status === 400 || r.status === 404 || r.status === 413) throw { code: 'invalid_argument', message: String(r.status) };
+    if (r.status === 429) throw { code: 'resource_exhausted', message: '429' };
+    if (!r.ok) throw { code: 'unavailable', message: String(r.status) };
+    return r.json();
+  };
+  const snap = (c, q) => {
+    let docs = Object.entries(mirror[c] || {}).map(([id, d]) => ({ id, exists: true, data: () => d, metadata: { fromCache: false, hasPendingWrites: false } }));
+    if (q.order) { const [f, dir] = q.order; docs.sort((a, b) => String(a.data()[f] ?? '').localeCompare(String(b.data()[f] ?? '')) * (dir === 'desc' ? -1 : 1)); }
+    if (q.lim) docs = docs.slice(0, q.lim);
+    return { docs, size: docs.length, empty: !docs.length, docChanges: () => [], metadata: { fromCache: false, hasPendingWrites: false } };
+  };
+  const emit = (colls) => { for (const s of subs) if (colls.has(s.c)) s.next(snap(s.c, s.q)); };
+  const poll = async () => {
+    const r = await req('GET', BASE + '?since=' + Math.max(0, cursor - 3000));
+    const changed = new Set();
+    for (const x of r.docs || []) {
+      const m = (mirror[x.c] = mirror[x.c] || {});
+      if (x.x) { if (x.id in m) { delete m[x.id]; changed.add(x.c); } }
+      else if (!m[x.id] || JSON.stringify(m[x.id]) !== JSON.stringify(x.d)) { m[x.id] = x.d; changed.add(x.c); }
+    }
+    cursor = Math.max(cursor, Number(r.cursor) || 0);
+    if (askClose && document.body.contains(askClose.el)) { askClose(); askClose = null; }
+    return changed;
+  };
+  const loop = async () => {
+    clearTimeout(timer);
+    try {
+      const ch = await poll(); fails = 0;
+      if (meta.offline) { meta.offline = false; updateSync(); renderBanner(); }
+      if (ch.size) emit(ch);
+    } catch (e) {
+      if (e.code !== 'unauthorized' && ++fails >= 3 && !meta.offline) { meta.offline = true; updateSync(); renderBanner(); }
+    }
+    timer = setTimeout(loop, document.hidden ? 15000 : 2500);
+  };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loop(); });
+  const start = () => first || (first = (async () => {
+    for (;;) { try { await poll(); break; } catch (e) { await new Promise((r) => setTimeout(r, e.code === 'unauthorized' ? 1500 : 3000)); } }
+    emit(new Set(COLLS));
+    timer = setTimeout(loop, 2500);
+  })());
+  function askTeamKey(wrong) {
+    if (askClose && document.body.contains(askClose.el)) return;
+    askClose = openForm({ title: 'Team-Schlüssel', fields: [{ k: 'key', label: 'Team-Schlüssel', req: true, max: 200, type: 'password',
+      hint: (wrong ? 'Der gespeicherte Schlüssel ist nicht mehr gültig. ' : '') + 'Diese Plattform ist geschützt. Den Schlüssel bekommst du vom Projektinhaber. Er wird nur in diesem Browser gespeichert.' }],
+      values: { key: '' }, submitLabel: 'Entsperren',
+      onSubmit: async (v) => { ls.set('teamKey', v.key); askClose = null; if (first) loop(); return true; } });
+  }
+  const write = async (c, id, method, body) => {
+    const m = (mirror[c] = mirror[c] || {}); const prev = m[id];
+    if (method === 'DELETE') delete m[id]; else if (method === 'PATCH') m[id] = { ...(prev || {}), ...body }; else m[id] = body;
+    try { await req(method, `${BASE}/${encodeURIComponent(c)}/${encodeURIComponent(id)}`, method === 'DELETE' ? null : body); }
+    catch (e) { if (prev === undefined) delete m[id]; else m[id] = prev; throw e; }
+  };
+  const coll = (c, q = {}) => ({
+    orderBy: (f, dir) => coll(c, { ...q, order: [f, dir] }),
+    limit: (n) => coll(c, { ...q, lim: n }),
+    onSnapshot(next) { const s = { c, q, next }; subs.push(s); start().then(() => next(snap(c, q))); return () => { const i = subs.indexOf(s); if (i >= 0) subs.splice(i, 1); }; },
+    doc: (id) => ({ set: (d) => write(c, id, 'PUT', d), update: (d) => write(c, id, 'PATCH', d), delete: () => write(c, id, 'DELETE') }),
+  });
+  return { collection: (c) => coll(c), doc: (p) => { const [c, id] = p.split('/'); return coll(c).doc(id); } };
+}
+
 async function connect() {
   const timer = setTimeout(() => { if (meta.confirmed.size < COLLS.length && !meta.local) { meta.offline = true; if (!meta.got.size) { COLLS.forEach((c) => meta.got.add(c)); } updateSync(); renderBanner(); scheduleRender(); } }, 10000);
   let db = null;
   try { db = window.claude && typeof window.claude.use === 'function' ? await window.claude.use('db') : null; } catch { db = null; }
+  if (!db) { try { db = await restDb(); } catch { db = null; } }
   if (!db) {
     clearTimeout(timer); meta.local = true; COLLS.forEach((c) => meta.got.add(c));
     updateSync(); renderBanner(); scheduleRender(); return;
@@ -915,7 +998,7 @@ function updateSync() {
 }
 function renderBanner() {
   const slot = $('#banner-slot'); const msgs = [];
-  if (meta.local) msgs.push(['', 'Diese Ansicht läuft ohne Datenbank. Öffne die Plattform über ihren claude.ai-Link, damit Änderungen gespeichert und mit dem Team geteilt werden.']);
+  if (meta.local) msgs.push(['', 'Diese Ansicht läuft ohne Datenbank. Öffne die Plattform über ihre veröffentlichte Adresse, damit Änderungen gespeichert und mit dem Team geteilt werden.']);
   if (meta.failed) msgs.push(['crit', 'Die Verbindung zur Datenbank wurde getrennt. Lade die Seite neu, um wieder zu synchronisieren.']);
   else if (meta.offline) msgs.push(['', 'Die Daten sind gerade nicht erreichbar. Die Anzeige kann veraltet sein; die Verbindung wird automatisch wieder aufgebaut.']);
   if (meta.readOnly) msgs.push(['', 'Du hast nur Lesezugriff. Bitte den Besitzer der Plattform, dich als Mitwirkenden einzuladen, um Aufgaben zu bearbeiten.']);
@@ -1917,6 +2000,7 @@ $('#q').addEventListener('keydown', (e) => {
 });
 window.addEventListener('hashchange', onRoute);
 setInterval(() => { $$('[data-ts]').forEach((el) => { el.textContent = rel(el.dataset.ts); }); }, 60000);
+const askT = setInterval(() => { if (meta.askedMe) clearInterval(askT); else maybeAskIdentity(); }, 1500);
 
 /* Start */
 $('.menu-btn').innerHTML = ic('menu');

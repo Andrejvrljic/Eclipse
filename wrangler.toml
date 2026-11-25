@@ -1,0 +1,14 @@
+name = "eclipse-dev-platform"
+main = "worker/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# database_id wird im GitHub-Actions-Workflow eingesetzt (die Datenbank wird dort bei Bedarf angelegt).
+[[d1_databases]]
+binding = "DB"
+database_name = "eclipse-db"
+database_id = "__D1_DATABASE_ID__"

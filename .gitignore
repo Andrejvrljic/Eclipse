@@ -1,1 +1,6 @@
 seed/writes.json
+public/
+.wrangler/
+node_modules/
+wrangler.local.toml
+.dev.vars
