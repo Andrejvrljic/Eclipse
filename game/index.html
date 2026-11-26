@@ -103,6 +103,10 @@ body.touch .cross{display:none}
 .bigmsg{position:absolute;left:50%;top:26%;transform:translateX(-50%);max-width:min(640px,calc(100vw - 32px));padding:14px 22px;border-radius:14px;background:var(--panel);border:1px solid rgba(167,139,250,.45);font:600 18px/1.35 var(--fd);text-align:center;box-shadow:0 0 40px -10px var(--glow)}
 .bigmsg.show{animation:tin .35s ease-out}
 .flash{position:fixed;inset:0;z-index:4;pointer-events:none;background:radial-gradient(ellipse at center,transparent 40%,rgba(239,68,68,.9));opacity:0}
+.help{position:fixed;z-index:6;left:max(12px,env(safe-area-inset-left));top:calc(56px + env(safe-area-inset-top));width:min(330px,calc(100vw - 24px));padding:12px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line-2);font-size:12.5px;pointer-events:none}
+.keys2{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:8px;color:var(--muted)}
+.keys2 kbd{font:500 11px var(--fm);color:var(--text);border:1px solid var(--line-2);border-radius:5px;padding:0 6px;justify-self:start;white-space:nowrap}
+body.touch .help{display:none!important}
 .pause,.death{position:fixed;inset:0;z-index:12;display:grid;place-items:center;background:rgba(5,5,7,.6)}
 .pause{cursor:pointer}
 .pause .card,.death .card{text-align:center}
@@ -201,6 +205,7 @@ body.touch .hotbar{bottom:calc(10px + env(safe-area-inset-bottom))}
       <kbd>Shift · Leertaste</kbd><span>Sprinten · Springen / Handbremse</span>
       <kbd>E</kbd><span>Einsteigen, Tür, Kreatur füttern / kommandieren</span>
       <kbd>F · X · R</kbd><span>Reiten · Abreißen · Auto zurücksetzen</span>
+      <kbd>H</kbd><span>Steuerungshilfe ein/aus</span>
     </div>
     <div class="touchhelp">Links ziehen: laufen. Rechts wischen: umsehen. Knöpfe rechts: Angriff, Springen, Benutzen. Oben links: Inventar.</div>
     <a class="dash" id="dash-link" href="#" hidden>Zum Projekt-Dashboard</a>
@@ -208,7 +213,7 @@ body.touch .hotbar{bottom:calc(10px + env(safe-area-inset-bottom))}
 </div>
 
 <div class="hud" id="hud" hidden>
-  <div class="tl"><span class="chip"><b>ECLIPSE</b></span><span class="chip"><i class="dot" id="net-dot" data-ok="0"></i><span id="online">Verbinde …</span></span><span class="chip adm" id="admin-badge" hidden>ADMIN · P</span></div>
+  <div class="tl"><span class="chip"><b>ECLIPSE</b></span><span class="chip"><i class="dot" id="net-dot" data-ok="0"></i><span id="online">Offline</span></span><span class="chip adm" id="admin-badge" hidden>ADMIN · P</span></div>
   <div class="tr"><span class="chip"><i class="coin"></i><span class="mono" id="coins">0</span></span></div>
   <div class="quests" id="quests"></div>
   <div class="cross"></div>
@@ -232,6 +237,10 @@ body.touch .hotbar{bottom:calc(10px + env(safe-area-inset-bottom))}
   <div class="panel-body" id="panel-body"></div>
 </div>
 
+<div class="help" id="help" hidden>
+  <b>Steuerung</b> <span class="muted">(H blendet aus/ein)</span>
+  <div class="keys2"><kbd>W A S D</kbd><span>Laufen / Fahren</span><kbd>Maus</kbd><span>Umsehen (ins Bild klicken)</span><kbd>Leertaste</kbd><span>Springen · im Auto: Handbremse</span><kbd>Shift</kbd><span>Sprinten</span><kbd>E</kbd><span>Interagieren: ein-/aussteigen, Tür, füttern</span><kbd>Linksklick</kbd><span>Angreifen, sammeln, bauen</span><kbd>1–8</kbd><span>Schnellleiste</span><kbd>Tab</kbd><span>Inventar, Herstellen, Quests</span><kbd>F · X · R</kbd><span>Reiten · Abreißen · Auto aufstellen</span></div>
+</div>
 <div class="pause" id="pause" hidden><div class="card"><h2>Pause</h2><p>Klicke, um weiterzuspielen. Tab öffnet das Inventar.</p></div></div>
 <div class="death" id="death" hidden><div class="card"><h2>Du bist gestorben</h2><p id="death-by"></p><button class="play" id="respawn">Wiederbeleben</button></div></div>
 

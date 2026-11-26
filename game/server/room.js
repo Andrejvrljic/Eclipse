@@ -255,6 +255,25 @@ export class Room {
     this.send(s.ws, { t: 'cr', c: list });
   }
 
+  /** Spieler- und Fahrzeugzustände gebündelt verteilen (10 × pro Sekunde, nur in der Nähe; weit entfernte seltener). */
+  flushStates() {
+    const ready = [...this.sessions.values()].filter((s) => s.ready);
+    const full = this.tickN % 20 === 0;
+    const vehs = [...this.vehicles.values()].filter((v) => v.netDirty);
+    for (const r of ready) {
+      const list = [];
+      for (const o of ready) {
+        if (o === r || !o.st) continue;
+        const far = r.pos && o.pos ? Math.hypot(o.pos[0] - r.pos[0], o.pos[2] - r.pos[2]) > 350 : false;
+        if (full || (o.stDirty && (!far || this.tickN % 10 === 0))) list.push([o.sid, o.st]);
+      }
+      const vb = vehs.filter((v) => v.ctrl !== r.sid).map((v) => [v.id, v.p, v.q, v.sp, v.st]);
+      if (list.length || vb.length) this.send(r.ws, { t: 'ps', a: list, vb });
+    }
+    for (const o of ready) o.stDirty = false;
+    for (const v of vehs) v.netDirty = false;
+  }
+
   drop(ws) {
     const s = this.sessions.get(ws);
     if (!s) return;
@@ -273,7 +292,7 @@ export class Room {
   }
 
   async saveProfile(s, final = false) {
-    if (!s.profile) return;
+    if (!s.profile || String(s.pid).startsWith('psmoke')) return;
     const p = { ...s.profile, name: s.name, color: s.color, last_seen: new Date().toISOString(), pos: s.pos ? s.pos.map((n) => round(n)) : null };
     if (final) p.online = false;
     try { await putDoc(this.env.DB, C.players, s.pid, p); } catch { /* nächster Versuch */ }
@@ -342,7 +361,7 @@ export class Room {
       buildings: [...this.buildings.values()],
     });
     this.broadcast({ t: 'join', id: s.sid, name: s.name, color: s.color, admin: !!s.admin }, ws);
-    if (!saved) putDoc(this.env.DB, C.players, pid, s.profile).catch(() => {});
+    if (!saved && !pid.startsWith('psmoke')) putDoc(this.env.DB, C.players, pid, s.profile).catch(() => {});
     this.startLoop();
     this.writeStatus(true);
   }
@@ -355,8 +374,7 @@ export class Room {
         s.pos = m.p.map((n) => round(n, 100));
         s.dead = !!m.dead;
         const st = { p: s.pos, r: round(Number(m.r) || 0, 1000), v: m.v ? String(m.v).slice(0, 24) : 0, sp: round(Number(m.sp) || 0), w: m.w ? String(m.w).slice(0, 24) : '', a: m.a ? 1 : 0, hp: Math.round(clampNum(m.hp, 0, 100, 100)), tq: Array.isArray(m.tq) ? m.tq.slice(0, 4).map((n) => round(Number(n) || 0, 1000)) : undefined, ride: m.ride ? String(m.ride).slice(0, 24) : '', fly: m.fly ? 1 : 0 };
-        s.st = st;
-        this.broadcast({ t: 's', id: s.sid, ...st }, ws);
+        s.st = st; s.stDirty = true;
         break;
       }
       case 'save': {
@@ -446,8 +464,7 @@ export class Room {
         const v = this.vehicles.get(m.id); if (!v || v.ctrl !== s.sid) return;
         if (!Array.isArray(m.p) || !Array.isArray(m.q) || !m.p.every(Number.isFinite) || !m.q.every(Number.isFinite)) return;
         v.p = m.p.slice(0, 3).map((n) => round(n, 100)); v.q = m.q.slice(0, 4).map((n) => round(n, 1000));
-        v.sp = round(Number(m.sp) || 0); v.st = round(Number(m.st) || 0, 100); v.ctrlAt = now(); v.dirty = true;
-        this.broadcast({ t: 'vs', id: v.id, p: v.p, q: v.q, sp: v.sp, st: v.st }, ws);
+        v.sp = round(Number(m.sp) || 0); v.st = round(Number(m.st) || 0, 100); v.ctrlAt = now(); v.dirty = true; v.netDirty = true;
         break;
       }
       case 'build': {
@@ -632,6 +649,7 @@ export class Room {
       const t = now(); const dt = Math.min(0.5, (t - last) / 1000); last = t;
       this.tickN++;
       try { this.simulate(dt); } catch { /* Simulation weiterlaufen lassen */ }
+      this.flushStates();
       if (this.tickN % 2 === 0) for (const s of this.sessions.values()) if (s.ready) this.sendCreatures(s);
       if (this.tickN % 20 === 0) { this.pollDashboard().catch(() => {}); this.writeStatus().catch(() => {}); }
       if (this.tickN % 100 === 0) { this.populate(); }

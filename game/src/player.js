@@ -24,7 +24,8 @@ export function createPlayer(RAPIER, physics, scene, spawn, color, events = {}) 
 
   let vy = 0, grounded = false, speed = 0, facing = 0, swimming = false, swimT = 0, fallFrom = null;
   let tumble = null; // { body, collider, t, rest }
-  let flying = false, hidden = false;
+  let flying = false, hidden = false, standT = 0, stuckT = 0;
+  const lastPos = new THREE.Vector3();
   const fwd = new THREE.Vector3(), right = new THREE.Vector3(), dir = new THREE.Vector3();
 
   function endTumble() {
@@ -37,7 +38,7 @@ export function createPlayer(RAPIER, physics, scene, spawn, color, events = {}) 
     body.setNextKinematicTranslation({ x: p.x, y, z: p.z });
     collider.setEnabled(!hidden);
     root.position.set(0, 0, 0); fig.quaternion.identity(); fig.rotation.y = facing;
-    vy = 0;
+    vy = 0; standT = 0.7;
     events.onRecover?.();
   }
 
@@ -122,6 +123,7 @@ export function createPlayer(RAPIER, physics, scene, spawn, color, events = {}) 
       if (!grounded && vy > 0 && m.y < vy * dt * 0.5) vy = 0; // Kopf gestoßen
       // Fallschaden
       if (!grounded && !swimming) { if (fallFrom === null) fallFrom = t.y; }
+      if (grounded && !wasGrounded) { fig.userData.land = 1; }
       if (grounded && !wasGrounded && fallFrom !== null) { const h = fallFrom - t.y; if (h > 7) events.onFall?.(h); fallFrom = null; }
       if (swimming) fallFrom = null;
       const lim = SIZE / 2 - 6;
@@ -129,6 +131,21 @@ export function createPlayer(RAPIER, physics, scene, spawn, color, events = {}) 
       body.setNextKinematicTranslation({ x: nx, y: t.y + m.y, z: nz });
       speed = Math.hypot(m.x, m.z) / dt;
       if (len > 0.05) facing = Math.atan2(-dir.x, -dir.z);
+      // Unter den Boden gerutscht? Sofort zurück nach oben.
+      const ground = events.heightAt ? events.heightAt(nx, nz) : -Infinity;
+      if (t.y + m.y - CENTER < ground - 1.2 && ground > SEA_LEVEL - 0.5) { body.setNextKinematicTranslation({ x: nx, y: ground + CENTER + 0.2, z: nz }); vy = 0; }
+      // Feststecken: Bewegung gewollt, aber seit 2,5 s kaum vorangekommen → freischieben
+      if (len > 0.3 && !swimming) {
+        if (Math.hypot(t.x - lastPos.x, t.z - lastPos.z) < 0.02 * dt * 60) stuckT += dt; else stuckT = 0;
+        if (stuckT > 2.5) {
+          stuckT = 0;
+          const bx = t.x - dir.x * 1.2, bz = t.z - dir.z * 1.2;
+          const gy = events.heightAt ? Math.max(events.heightAt(bx, bz), t.y - CENTER) : t.y - CENTER;
+          body.setTranslation({ x: bx, y: gy + CENTER + 0.6, z: bz }, true); body.setNextKinematicTranslation({ x: bx, y: gy + CENTER + 0.6, z: bz });
+          events.onUnstuck?.();
+        }
+      } else stuckT = 0;
+      lastPos.set(t.x, t.y, t.z);
     },
 
     render(dt) {
@@ -145,7 +162,9 @@ export function createPlayer(RAPIER, physics, scene, spawn, color, events = {}) 
       let d = facing - fig.rotation.y;
       d = Math.atan2(Math.sin(d), Math.cos(d));
       fig.rotation.set(0, fig.rotation.y + d * Math.min(1, dt * 12), 0);
-      animateFigure(fig, grounded || swimming || flying ? speed : 0, dt, flying);
+      // Aufstehen nach dem Abrollen
+      if (standT > 0) { standT = Math.max(0, standT - dt); const k = standT / 0.7; root.rotation.x = -k * k * 1.45; } else root.rotation.x = 0;
+      animateFigure(fig, grounded || swimming || flying ? speed : 0, dt, flying, !grounded && !swimming && !flying);
     },
     teleport(x, y, z) {
       if (tumble) { physics.removeRigidBody(tumble.body); tumble = null; root.position.set(0, 0, 0); fig.quaternion.identity(); }

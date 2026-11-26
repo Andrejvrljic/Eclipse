@@ -36,14 +36,16 @@ export function makeFigure(color) {
 }
 
 /** Laufen, Schwingen (Angriff), Arme hängen lassen. */
-export function animateFigure(fig, speed, dt, flying = false) {
+export function animateFigure(fig, speed, dt, flying = false, airborne = false) {
   const u = fig.userData;
   u.phase += dt * (4 + speed * 1.6);
   const swing = flying ? 0.1 : Math.min(1, speed / 5) * 0.6;
-  u.legL.rotation.x = Math.sin(u.phase) * swing;
-  u.legR.rotation.x = -Math.sin(u.phase) * swing;
-  u.armL.rotation.x = -Math.sin(u.phase) * swing * 0.8;
-  u.body.position.y = 0.95 + Math.abs(Math.sin(u.phase)) * 0.04 * Math.min(1, speed / 3);
+  u.air = (u.air || 0) + ((airborne && !flying ? 1 : 0) - (u.air || 0)) * Math.min(1, dt * 10);
+  u.legL.rotation.x = Math.sin(u.phase) * swing * (1 - u.air) - 0.7 * u.air;
+  u.legR.rotation.x = -Math.sin(u.phase) * swing * (1 - u.air) + 0.35 * u.air;
+  u.armL.rotation.x = -Math.sin(u.phase) * swing * 0.8 * (1 - u.air) - 1.1 * u.air;
+  u.land = Math.max(0, (u.land || 0) - dt * 4);
+  u.body.position.y = 0.95 + Math.abs(Math.sin(u.phase)) * 0.04 * Math.min(1, speed / 3) - Math.sin(u.land * Math.PI) * 0.12;
   if (u.swing > 0) {
     u.swing = Math.max(0, u.swing - dt * 3.2);
     const p = 1 - u.swing; // 0..1

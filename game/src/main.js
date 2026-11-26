@@ -118,7 +118,7 @@ async function boot() {
       if (k === 'inventory') ui.toggle('inv');
       else if (k === 'admin' && admin) ui.toggle('admin');
       else if (k === 'escape' && ui.open) ui.close();
-      else if (k === 'cancel') selSlot = selSlot; // Rechtsklick: nichts
+      else if (k === 'help') $('help').hidden = !$('help').hidden;
     },
     onSlot: (i) => { selSlot = i; },
     onScroll: (d) => { selSlot = (selSlot + d + D.HOTBAR) % D.HOTBAR; },
@@ -131,11 +131,20 @@ async function boot() {
 
 /* ---------- Verbindung ---------- */
 function startGame(name, color, code) {
+  document.activeElement?.blur?.();
   $('play').disabled = true; $('play').textContent = 'Verbinde …';
+  $('loading').textContent = 'Verbindung zum Spielserver wird aufgebaut …';
+  let tries = 0;
+  if (net) net.close();
   net = createNet(scene, {
     hello: () => ({ pid: pid(), name, color, code }),
     onCount: (n) => { $('online').textContent = `${n} online`; },
-    onStatus: (ok) => { $('net-dot').dataset.ok = ok ? '1' : '0'; if (!ok && joined) $('online').textContent = 'Verbindung unterbrochen …'; },
+    onStatus: (ok, info) => {
+      $('net-dot').dataset.ok = ok ? '1' : '0';
+      if (!ok && joined) { $('online').textContent = 'Verbindung unterbrochen – neuer Versuch …'; ui.toast('Verbindung unterbrochen. Das Spiel verbindet sich automatisch neu.', 'warn'); }
+      if (ok && joined) $('online').textContent = `${net.count} online`;
+      if (!ok && !joined) { tries++; $('loading').textContent = `Spielserver nicht erreichbar${info ? ' (' + info + ')' : ''} – Versuch ${tries + 1} läuft …`; }
+    },
     onJoin: (n) => ui.toast(`${n} ist beigetreten`),
     onLeave: (n) => ui.toast(`${n} hat das Spiel verlassen`),
     onMessage: onServer,
@@ -159,17 +168,20 @@ function onServer(m) {
           onWater: () => { const l = world.findLand(player.center(tmp).x, tmp.z); player.teleport(l.x, world.heightAt(l.x, l.z), l.z); ui.toast('Du wurdest an Land gebracht.'); },
           onFall: (h) => { if (!god) hurt(Math.round((h - 7) * 7), 'einem Sturz'); },
           onJump: () => { stamina = Math.max(0, stamina - 10); },
+          onUnstuck: () => ui.toast('Du hingst fest und wurdest freigeschoben.'),
         });
       }
       vehicles.sync(m.vehicles, net.id);
       buildings.sync(m.buildings);
       $('online').textContent = `${net.count} online`;
       if (!joined) {
-        joined = true; playing = true;
+        joined = true; playing = true; $('loading').textContent = '';
+        document.activeElement?.blur?.();
         $('start').hidden = true; $('hud').hidden = false; document.body.classList.add('playing');
         if (!input.state.touch) $('game').requestPointerLock?.()?.catch?.(() => {});
         if (config.settings.motd) ui.big(config.settings.motd);
         if (admin) ui.toast('Du bist Admin. Drück P für das Admin-Menü.', 'item');
+        if (!ls.get('helpSeen')) { $('help').hidden = false; ls.set('helpSeen', '1'); setTimeout(() => { $('help').hidden = true; }, 12000); }
         if (new URLSearchParams(location.search).has('debug')) window.__eclipse = { player, vehicles, creatures, buildings, world, physics, state, net, useHeld, interact, leaveVehicle, adminOp, get driving() { return driving; }, get riding() { return riding; }, setYaw: (v) => { yaw = v; }, setSlot: (i) => { selSlot = i; }, get dead() { return dead; }, hurt };
       }
       $('admin-badge').hidden = !admin;
@@ -610,7 +622,10 @@ function frame(now) {
     w: held && !driving ? held.id : '', a: swingT > 0 ? 1 : 0, hp: Math.round((p.hp / state.maxHp) * 100),
     tq: tq ? [tq.x, tq.y, tq.z, tq.w] : undefined, ride: riding ? riding.id : '', fly: player.flying ? 1 : 0, dead: dead ? 1 : 0,
   });
-  net.update(dt, camera, (id) => state.def(id));
+  net.update(dt, camera, (id) => state.def(id), {
+    seat: (vid) => { const e = vehicles.get(vid); if (!e) return null; const f = vehicles.forward(e); return { pos: vehicles.seatPos(e, new THREE.Vector3()), yaw: Math.atan2(-f.x, -f.z) }; },
+    mount: (cid) => { const c = creatures.map.get(cid); return c ? { pos: c.pos, ry: c.ry, scale: Number(c.def.scale) || 1 } : null; },
+  });
   if (now - lastSave > 5000 && state.dirty) { lastSave = now; net.send({ t: 'save', profile: state.serialize() }); state.clean(); }
 
   // Anzeige

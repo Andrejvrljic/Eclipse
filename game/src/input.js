@@ -9,10 +9,13 @@ export function createInput(canvas, ui) {
     touch: matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window,
     locked: false, lastLook: 0,
   };
-  const uiKeys = { Tab: 'inventory', KeyI: 'inventory', KeyP: 'admin', Escape: 'escape', KeyT: 'chat' };
+  const uiKeys = { Tab: 'inventory', KeyI: 'inventory', KeyP: 'admin', Escape: 'escape', KeyH: 'help' };
+  // Tasten nur ignorieren, wenn wirklich in ein sichtbares Eingabefeld getippt wird
+  const typing = (t) => (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) && t.offsetParent !== null;
 
   window.addEventListener('keydown', (e) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+    if (typing(e.target)) return;
+    if (e.target instanceof HTMLElement && e.target !== document.body && e.target.tagName !== 'CANVAS' && !e.target.closest('.panel')) e.target.blur?.();
     if (uiKeys[e.code]) { e.preventDefault(); ui.onUiKey(uiKeys[e.code]); return; }
     if (/^Digit[1-8]$/.test(e.code)) { ui.onSlot(Number(e.code.slice(5)) - 1); return; }
     if (!keys.has(e.code)) {

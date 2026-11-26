@@ -76,8 +76,9 @@ async function main() {
   // Positionen austauschen
   const posA = [3, 9, 4];
   for (let i = 0; i < 5; i++) { A.send({ t: 's', p: posA, r: 0.5, v: 0, sp: 2, hp: 100 }); B.send({ t: 's', p: [6, 9, 6], r: 0, v: 0, sp: 0, hp: 100 }); await sleep(150); }
-  const sAB = await B.wait((m) => m.t === 's' && m.id === wa.id, 5000);
-  ok('B empfängt Position von A', !!sAB && JSON.stringify(sAB.p) === JSON.stringify(posA), sAB ? JSON.stringify(sAB.p) : 'nichts');
+  const sAB = await B.wait((m) => (m.t === 's' && m.id === wa.id) || (m.t === 'ps' && (m.a || []).some(([id]) => id === wa.id)), 5000);
+  const stA = sAB && (sAB.t === 's' ? sAB : sAB.a.find(([id]) => id === wa.id)[1]);
+  ok('B empfängt Position von A', !!stA && JSON.stringify(stA.p) === JSON.stringify(posA), stA ? JSON.stringify(stA.p) : 'nichts');
   const cr = await A.wait((m) => m.t === 'cr', 5000);
   ok('Kreaturen-Updates kommen an', !!cr, cr ? `${cr.c.length} Kreaturen in der Nähe` : 'nichts');
   ok('Gleiche Fahrzeugfarben für A und B', JSON.stringify((wa.vehicles || []).map((v) => [v.id, v.color]).sort()) === JSON.stringify((wb.vehicles || []).map((v) => [v.id, v.color]).sort()), `${(wa.vehicles || []).length} Fahrzeuge`);

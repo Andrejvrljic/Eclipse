@@ -20,7 +20,7 @@ export function createVehicles(RAPIER, physics, scene, world) {
     const ctl = physics.createVehicleController(body);
     for (const [x, z] of spec.wheels) ctl.addWheel({ x, y: spec.connY, z }, { x: 0, y: -1, z: 0 }, { x: 0, y: 0, z: -1 }, spec.rest, spec.radius);
     for (let i = 0; i < spec.wheels.length; i++) {
-      ctl.setWheelSuspensionStiffness(i, 28); ctl.setWheelSuspensionCompression(i, 2.4); ctl.setWheelSuspensionRelaxation(i, 3.2);
+      ctl.setWheelSuspensionStiffness(i, 30); ctl.setWheelSuspensionCompression(i, 3.0); ctl.setWheelSuspensionRelaxation(i, 4.0);
       ctl.setWheelFrictionSlip(i, 2.2); ctl.setWheelSideFrictionStiffness(i, 1.2);
       ctl.setWheelMaxSuspensionTravel(i, spec.rest * 0.8); ctl.setWheelMaxSuspensionForce(i, 200000);
     }
@@ -104,14 +104,15 @@ export function createVehicles(RAPIER, physics, scene, world) {
         if (e.id === drivenId) {
           const sp = api.speed(e), throttle = input.move.y;
           let engine = 0, brake = 0;
-          if (throttle > 0.05) { if (sp < -0.5) brake = 45; else if (sp < s.maxFwd) engine = -s.engine * throttle; }
-          else if (throttle < -0.05) { if (sp > 0.5) brake = 45; else if (sp > -s.maxRev) engine = s.engine * 0.6 * -throttle; }
-          else brake = 3;
+          const curve = 1 - 0.6 * Math.min(1, (Math.abs(sp) / s.maxFwd) ** 2); // viel Kraft beim Anfahren, weniger bei Höchstgeschwindigkeit
+          if (throttle > 0.05) { if (sp < -0.5) brake = s.engine / 28; else if (sp < s.maxFwd) engine = -s.engine * throttle * curve; }
+          else if (throttle < -0.05) { if (sp > 0.5) brake = s.engine / 28; else if (sp > -s.maxRev) engine = s.engine * 0.6 * -throttle; }
+          else brake = s.engine / 450;
           const target = -input.move.x * s.steer * (1 - Math.min(0.55, Math.abs(sp) / 45));
           e.steer += (target - e.steer) * Math.min(1, dt * 8);
           for (let i = 0; i < n; i++) {
             e.ctl.setWheelEngineForce(i, i >= 2 ? engine : engine * 0.5);
-            e.ctl.setWheelBrake(i, input.brake ? (i >= 2 ? s.engine / 16 : s.engine / 70) : brake * (s.engine / 1500));
+            e.ctl.setWheelBrake(i, input.brake ? (i >= 2 ? s.engine / 16 : s.engine / 70) : brake);
           }
           e.ctl.setWheelSteering(0, e.steer); e.ctl.setWheelSteering(1, e.steer);
           if (engine) e.body.wakeUp();
@@ -120,6 +121,13 @@ export function createVehicles(RAPIER, physics, scene, world) {
           e.steer *= 0.9; e.ctl.setWheelSteering(0, e.steer); e.ctl.setWheelSteering(1, e.steer);
         }
         e.ctl.updateVehicle(dt, EXCLUDE_SENSORS);
+        // Selbstaufrichten: bei starker Schräglage sanft zurück auf die Räder drehen
+        const r = e.body.rotation();
+        const ux = 2 * (r.x * r.y - r.w * r.z), uy = 1 - 2 * (r.x * r.x + r.z * r.z), uz = 2 * (r.y * r.z + r.w * r.x);
+        if (uy < 0.85) {
+          const m = e.body.mass() * dt * 4.5 * (1 - uy);
+          e.body.applyTorqueImpulse({ x: -uz * m, y: 0, z: ux * m }, true); // Drehachse = eigene Hochachse × Welt-Hoch
+        }
       }
     },
 
@@ -162,6 +170,7 @@ export function createVehicles(RAPIER, physics, scene, world) {
         if (e.mode !== 'local') continue;
         const t = e.body.translation();
         if (t.y < SEA_LEVEL - 0.6) api.reset(e, true);
+        else if (t.y < world.heightAt(t.x, t.z) - 1.5) api.reset(e, false); // im Boden verschwunden → hochsetzen
         if (e.id === drivenId) continue;
         const l = e.body.linvel();
         if (Math.hypot(l.x, l.y, l.z) < 0.4) e.restT += dt; else e.restT = 0;
