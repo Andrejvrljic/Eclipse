@@ -41,8 +41,9 @@ export class Game {
     this.menuT = 0;
     this.fpsT = 0; this.fpsN = 0; this.fps = 0;
 
-    const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.coarse, powerPreference: 'high-performance' });
+    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.coarse ? 1.5 : 2));
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
     r.toneMapping = THREE.ACESFilmicToneMapping;
@@ -62,6 +63,7 @@ export class Game {
     this.buildFx();
     this.resetLocal();
     this.bindInput();
+    this.bindTouch();
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.buildWeaponHud();
@@ -149,7 +151,7 @@ export class Game {
     const sun = new THREE.DirectionalLight('#ffd9b5', 2.4);
     sun.position.copy(SUN_DIR).multiplyScalar(120);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.setScalar(this.coarse ? 1024 : 2048);
     const sc = sun.shadow.camera;
     sc.left = -62; sc.right = 62; sc.top = 62; sc.bottom = -62; sc.near = 10; sc.far = 300;
     sun.shadow.bias = -0.0004;
@@ -465,7 +467,7 @@ export class Game {
     document.addEventListener('keydown', (e) => {
       if (this.mode !== 'game') return;
       if (this.chatting) {
-        if (e.code === 'Enter') { this.sendChat(); e.preventDefault(); }
+        if (e.code === 'Enter' || e.key === 'Enter') { this.sendChat(); e.preventDefault(); }
         return;
       }
       if (e.code === 'Tab') { e.preventDefault(); $('scoreboard').hidden = false; this.renderScoreboard(); return; }
@@ -484,9 +486,136 @@ export class Game {
     window.addEventListener('blur', () => { this.keys.clear(); this.firing = false; });
   }
 
-  active() { return this.mode === 'game' && (this.locked || this.debugActive); }
+  // =====================================================================
+  // Touch-Steuerung (Handy / Tablet)
+  // =====================================================================
+  bindTouch() {
+    const T = this.touch = { on: false, joyId: null, jx: 0, jy: 0, ox: 0, oy: 0, look: new Map(), jump: false };
+    const joy = $('t-joy'), knob = $('t-knob');
+    const R = 56;
+    const enable = () => {
+      if (T.on) return;
+      T.on = true;
+      document.body.classList.add('touch');
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      this.resize();
+    };
+    window.addEventListener('touchstart', enable, { passive: true, capture: true });
+    if (this.coarse) enable();
+
+    const disable = () => {
+      if (!T.on) return;
+      T.reset();
+      T.on = false;
+      document.body.classList.remove('touch');
+    };
+    // Echte Maus benutzt (z. B. Laptop mit Touchscreen) → zurück zur Maus-/Tastatursteuerung
+    window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') disable(); }, { capture: true });
+    const resetJoy = () => {
+      T.joyId = null; T.jx = 0; T.jy = 0;
+      joy.classList.remove('on');
+      joy.style.left = ''; joy.style.top = '';
+      knob.style.transform = 'translate(-50%, -50%)';
+    };
+    const look = (t) => {
+      const prev = T.look.get(t.identifier);
+      if (!prev) return;
+      const dx = t.clientX - prev.x, dy = t.clientY - prev.y;
+      prev.x = t.clientX; prev.y = t.clientY;
+      if (!this.alive || this.chatting) return;
+      const zoom = this.camera.fov / this.settings.fov;
+      const k = 0.0058 * this.settings.sens * zoom;
+      this.yaw -= dx * k;
+      this.pitch -= dy * k * (this.settings.invert ? -1 : 1);
+      this.pitch = Math.max(-1.52, Math.min(1.52, this.pitch));
+      this.vmSwayX += dx * 0.0004;
+      this.vmSwayY += dy * 0.0004;
+    };
+    // Nur Berührungen im Spielbild auswerten (Menüs und Pause bleiben normal bedienbar)
+    const inGame = (e) => this.mode === 'game' && e.target && e.target.closest && (e.target.closest('#hud') || e.target.id === 'view');
+    const start = (e) => {
+      if (!inGame(e) || e.target.closest('#chatinput')) return;
+      enable();
+      e.preventDefault();
+      this.sfx.init();
+      for (const t of e.changedTouches) {
+        const btn = t.target.closest && t.target.closest('[data-t]');
+        if (btn) {
+          btn.classList.add('down');
+          T.btn = T.btn || new Map();
+          T.btn.set(t.identifier, btn);
+          this.touchButton(btn.dataset.t, true);
+          // Mit dem Feuerknopf kann man gleichzeitig zielen
+          if (btn.dataset.t === 'fire') T.look.set(t.identifier, { x: t.clientX, y: t.clientY });
+          continue;
+        }
+        if (T.joyId === null && t.clientX < window.innerWidth * 0.42) {
+          T.joyId = t.identifier; T.ox = t.clientX; T.oy = t.clientY;
+          joy.style.left = t.clientX + 'px';
+          joy.style.top = t.clientY + 'px';
+          joy.classList.add('on');
+        } else {
+          T.look.set(t.identifier, { x: t.clientX, y: t.clientY });
+        }
+      }
+    };
+    const move = (e) => {
+      if (!inGame(e) || !T.on) return;
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        if (t.identifier === T.joyId) {
+          let dx = t.clientX - T.ox, dy = t.clientY - T.oy;
+          const l = Math.hypot(dx, dy);
+          if (l > R) { dx = (dx / l) * R; dy = (dy / l) * R; }
+          T.jx = dx / R; T.jy = dy / R;
+          if (Math.hypot(T.jx, T.jy) < 0.12) { T.jx = 0; T.jy = 0; }
+          knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        } else look(t);
+      }
+    };
+    const end = (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === T.joyId) resetJoy();
+        T.look.delete(t.identifier);
+        const btn = T.btn && T.btn.get(t.identifier);
+        if (btn) {
+          btn.classList.remove('down');
+          T.btn.delete(t.identifier);
+          this.touchButton(btn.dataset.t, false);
+        }
+      }
+    };
+    window.addEventListener('touchstart', start, { passive: false });
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', end);
+    window.addEventListener('touchcancel', end);
+    T.reset = () => { resetJoy(); T.look.clear(); T.jump = false; this.firing = false; if (T.btn) { for (const b of T.btn.values()) b.classList.remove('down'); T.btn.clear(); } };
+    $('chatinput').addEventListener('blur', () => { if (this.chatting && this.touch.on) this.closeChat(); });
+  }
+
+  touchButton(act, down) {
+    switch (act) {
+      case 'fire': this.firing = down; if (down) this.semiReady = true; break;
+      case 'jump': this.touch.jump = down; break;
+      case 'ads': if (down) this.ads = !this.ads; break;
+      case 'reload': if (down) this.reload(); break;
+      case 'swap': if (down) this.switchWeapon((this.wi + 1) % WEAPON_ORDER.length); break;
+      case 'pause': if (down) { this.touch.reset(); this.ui.onPause(); } break;
+      case 'score': if (down) { const sb = $('scoreboard'); sb.hidden = !sb.hidden; if (!sb.hidden) this.renderScoreboard(); } break;
+      case 'chat': if (down) { this.touch.reset(); this.openChat(); } break;
+      default: break;
+    }
+  }
+
+  active() { return this.mode === 'game' && (this.locked || this.debugActive || this.touch.on); }
 
   lock() {
+    if (this.touch.on && this.coarse) {
+      // Auf Handy/Tablet gibt es keine Mausfixierung – stattdessen Vollbild versuchen
+      const de = document.documentElement;
+      if (!document.fullscreenElement && de.requestFullscreen) de.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+      return;
+    }
     const p = this.canvas.requestPointerLock && this.canvas.requestPointerLock({ unadjustedMovement: true });
     if (p && p.catch) p.catch(() => { try { this.canvas.requestPointerLock(); } catch {} });
   }
@@ -496,7 +625,7 @@ export class Game {
     this.keys.clear(); this.firing = false;
     const i = $('chatinput');
     i.hidden = false; i.value = '';
-    setTimeout(() => i.focus(), 0);
+    if (this.touch.on) i.focus(); else setTimeout(() => i.focus(), 0);
   }
 
   closeChat() {
@@ -563,6 +692,7 @@ export class Game {
     this.mode = 'menu';
     this.alive = false;
     this.closeChat();
+    if (this.touch) this.touch.reset();
     $('hud').hidden = true;
     if (document.pointerLockElement) document.exitPointerLock();
     if (!silent) this.ui.onLeave('', 1000);
@@ -583,7 +713,9 @@ export class Game {
         for (const p of m.players) { this.roster.set(p.id, { ...p, ping: 0 }); this.addRemote(p); }
         this.spawnSelf(m.spawn);
         $('sb-room').textContent = 'Raum ' + m.room;
-        this.sysChat(`Willkommen in ${m.room}! Enter = Chat, Tab = Punktestand.`);
+        this.sysChat(this.touch.on
+          ? `Willkommen in ${m.room}! Links = Joystick zum Laufen, rechts wischen = Zielen.`
+          : `Willkommen in ${m.room}! WASD = Laufen, Maus = Zielen, Enter = Chat, Tab = Punktestand.`);
         if (m.match.state === 'end') this.showEnd({ ranking: [], winner: 0, nextAt: m.match.nextAt });
         this.ui.onJoined();
         break;
@@ -854,6 +986,8 @@ export class Game {
   }
 
   updateWeaponHud() {
+    const wn = $('t-wname');
+    if (wn) wn.textContent = this.weapon.name;
     document.querySelectorAll('.wslot').forEach((el) => el.classList.toggle('on', Number(el.dataset.i) === this.wi));
     for (const [k, g] of Object.entries(this.vms)) g.visible = k === WEAPON_ORDER[this.wi];
     this.hudAmmo = -1;
@@ -872,6 +1006,7 @@ export class Game {
       $('reloadhint').hidden = !(a <= Math.ceil(w.mag * 0.25) && !reloading);
     }
     $('prot').hidden = !(this.prot && this.alive);
+    if (this.touch.on) $('t-ads').classList.toggle('on', this.ads);
     const sniperScope = w.key === 'sniper' && this.adsK > 0.85;
     $('scope').hidden = !sniperScope;
     $('crosshair').style.display = sniperScope ? 'none' : '';
@@ -970,17 +1105,19 @@ export class Game {
       if (this.keys.has('KeyA')) fx -= 1;
       if (this.keys.has('KeyD')) fx += 1;
     }
-    const len = Math.hypot(fx, fz) || 1;
-    fx /= len; fz /= len;
+    const T = this.touch;
+    if (act && T.joyId !== null) { fx += T.jx; fz += T.jy; }
+    const len = Math.hypot(fx, fz);
+    if (len > 1) { fx /= len; fz /= len; }
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     const wx = fx * cos + fz * sin, wz = -fx * sin + fz * cos;
     this.adsK += ((this.ads && act ? 1 : 0) - this.adsK) * Math.min(1, dt * 14);
-    const sprint = act && this.keys.has('ShiftLeft') && fz < 0 && this.adsK < 0.3;
+    const sprint = act && (this.keys.has('ShiftLeft') || (T.joyId !== null && len > 0.95 && fz < -0.7)) && fz < 0 && this.adsK < 0.3;
     const speed = (sprint ? MOVE.sprint : MOVE.walk) * (1 - this.adsK * 0.45);
     if (this.alive) {
       const wasGround = b.onGround, vy = b.v[1];
       accelerate(b, (fx || fz) ? wx : 0, (fx || fz) ? wz : 0, speed, dt);
-      if (act && this.keys.has('Space') && b.onGround) { b.v[1] = MOVE.jump; b.onGround = false; }
+      if (act && (this.keys.has('Space') || T.jump) && b.onGround) { b.v[1] = MOVE.jump; b.onGround = false; }
       step(b, dt, BOXES);
       if (!wasGround && b.onGround && vy < -6) { this.landDip = Math.min(0.25, -vy * 0.02); this.sfx.land(); }
       const hs = Math.hypot(b.v[0], b.v[2]);
