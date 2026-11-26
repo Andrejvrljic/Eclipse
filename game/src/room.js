@@ -1,4 +1,4 @@
-// ECLIPSE Arena – ein Spielraum (Durable Object). Der Raum ist der Schiedsrichter:
+// Nova Strike – ein Spielraum (Durable Object). Der Raum ist der Schiedsrichter:
 // Er prüft Bewegungen, berechnet Treffer (mit Lag-Ausgleich), zählt Punkte, steuert Bots
 // und schreibt die Statistiken der Spieler in die D1-Datenbank.
 import { DurableObject } from 'cloudflare:workers';

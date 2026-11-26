@@ -1,4 +1,4 @@
-# ECLIPSE Arena – das Spiel 🎮
+# Nova Strike – das Spiel 🎮
 
 3D-Multiplayer-Shooter im Browser (Ordner `game/`): Accounts mit Passwort, Rangliste, Level/XP,
 drei Waffen, Bots, Chat und mehrere Räume.

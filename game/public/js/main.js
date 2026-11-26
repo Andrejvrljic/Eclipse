@@ -1,4 +1,4 @@
-// ECLIPSE Arena – Menüs, Anmeldung und Verbindung zwischen Oberfläche und Spiel.
+// Nova Strike – Menüs, Anmeldung und Verbindung zwischen Oberfläche und Spiel.
 import { Game } from './game.js';
 import { Sfx } from './audio.js';
 

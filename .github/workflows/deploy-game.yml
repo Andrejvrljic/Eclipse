@@ -1,4 +1,4 @@
-name: Deploy ECLIPSE Arena (Spiel)
+name: Deploy Nova Strike (Spiel)
 
 on:
   push:
@@ -95,7 +95,7 @@ jobs:
           npx wrangler deploy
           URL="https://eclipse-game.$SUBDOMAIN.workers.dev"
           echo "::notice title=Spiel online::$URL"
-          echo "### 🎮 ECLIPSE Arena ist online: $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🎮 Nova Strike ist online: $URL" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Kurzer Test der Live-Seite
         run: |

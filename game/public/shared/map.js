@@ -1,4 +1,4 @@
-// ECLIPSE Arena – Karte "Krater" (gemeinsam für Browser und Server).
+// Nova Strike – Karte "Krater" (gemeinsam für Browser und Server).
 // Y zeigt nach oben, der Boden liegt bei y = 0. Jede Box ist ein achsenparalleler Quader.
 export const ARENA = 44; // halbe Kantenlänge der Spielfläche in Metern
 

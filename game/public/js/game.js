@@ -1,4 +1,4 @@
-// ECLIPSE Arena – 3D-Darstellung, Steuerung, Waffen und Netzwerk im Browser.
+// Nova Strike – 3D-Darstellung, Steuerung, Waffen und Netzwerk im Browser.
 import * as THREE from 'three';
 import { BOXES, ARENA } from '../shared/map.js';
 import { PLAYER, MOVE, step, accelerate, rayMap, rayPlayer } from '../shared/physics.js';
@@ -237,7 +237,7 @@ export class Game {
       for (let i = 0; i < 900; i++) { x.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; x.fillRect(Math.random() * n, Math.random() * n, 3, 3); }
       x.strokeStyle = dark; x.lineWidth = 22; x.strokeRect(11, 11, n - 22, n - 22);
       x.lineWidth = 12; x.beginPath(); x.moveTo(22, 22); x.lineTo(n - 22, n - 22); x.stroke();
-      x.fillStyle = 'rgba(255,255,255,0.5)'; x.font = 'bold 26px sans-serif'; x.fillText('ECL', n - 80, n - 34);
+      x.fillStyle = 'rgba(255,255,255,0.5)'; x.font = 'bold 26px sans-serif'; x.fillText('NOVA', n - 92, n - 34);
     });
   }
 

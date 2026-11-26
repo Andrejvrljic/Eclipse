@@ -1,4 +1,4 @@
-// ECLIPSE Arena – Cloudflare Worker: Accounts (D1), Ranglisten und WebSocket-Zugang zu den Spielräumen.
+// Nova Strike – Cloudflare Worker: Accounts (D1), Ranglisten und WebSocket-Zugang zu den Spielräumen.
 // Statische Dateien (public/) liefert Cloudflare direkt aus; dieser Worker beantwortet /api/*.
 export { GameRoom } from './room.js';
 
