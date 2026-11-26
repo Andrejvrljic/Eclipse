@@ -1601,7 +1601,7 @@ function gLive() {
     <div class="card" style="padding:16px;display:grid;gap:8px">
       <p>Admins: <b>${esc(s.admins || '–')}</b></p>
       <p>Admin-Code: <span class="mono" style="font-size:16px;color:var(--accent-2)">${esc(s.admin_code || '– nicht gesetzt –')}</span></p>
-      <p class="muted" style="font-size:13px">Wer sich im Spiel mit einem Admin-Namen anmeldet, muss diesen Code eingeben („Ich bin Admin“ im Startbildschirm). Gib ihn nur an die Admins weiter. Ändern unter „Regeln“.</p>
+      <p class="muted" style="font-size:13px">Wer sich im Spiel mit einem Admin-Namen anmeldet, muss diesen Code eingeben („Ich bin Admin“ im Startbildschirm). Gib ihn nur an die Admins weiter. Ändern unter „Welt & Regeln“.</p>
     </div>`;
 }
 
@@ -1668,7 +1668,7 @@ function gRules() {
     <div class="statrow" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
       ${row('Erfahrung ×', s.xp_multiplier)}${row('Sammeln ×', s.gather_multiplier)}${row('Kreaturen-Schaden ×', s.damage_multiplier)}${row('Kreaturen-Menge ×', s.creature_multiplier)}
       ${row('Hunger-Tempo ×', s.hunger_rate)}${row('Max. Level', s.max_level)}${row('Start-Münzen', s.start_coins)}${row('Max. Spieler', s.max_players)}
-      ${row('Spieler-Kämpfe', s.pvp ? 'AN' : 'AUS')}${row('Admins', s.admins || '–')}
+      ${row('Spieler-Kämpfe', s.pvp ? 'AN' : 'AUS')}${row('Admins', s.admins || '–')}${row('Admin-Code', s.admin_code || '– nicht gesetzt –')}
       ${row('Wetter', s.weather || 'Klar')}${row('Tageszeit', s.time_mode || 'Finsternis')}${row('Spawnpunkt', `${Math.round(s.spawn_x || 0)}, ${Math.round(s.spawn_z || 0)}`)}${row('Auto-Schatzsuche', s.treasure_every ? 'alle ' + s.treasure_every + ' min' : 'aus')}
     </div>
     <div class="card" style="padding:16px;margin-top:12px"><div class="label">Begrüßung im Spiel</div><p style="margin-top:6px">${esc(s.motd || '–')}</p></div>`;
