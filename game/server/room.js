@@ -141,7 +141,7 @@ export class Room {
         const ry = Number(d.ry) || 0;
         const p = Array.isArray(d.p) ? d.p : [x, heightAt(x, z) + 1.4, z];
         const q = Array.isArray(d.q) ? d.q : [0, Math.sin(ry / 2), 0, Math.cos(ry / 2)];
-        this.vehicles.set(d.id, { id: d.id, type, color, p, q, sp: 0, st: 0, driver: null, ctrl: null, ctrlAt: 0, dirty: false });
+        this.vehicles.set(d.id, { id: d.id, type, color, p, q, sp: 0, st: 0, driver: null, ctrl: null, ctrlAt: 0, dirty: false, pass: [] });
       } else if (!initial) {
         if (v.type !== type || v.color !== color) { v.type = type; v.color = color; this.broadcast({ t: 'vdef', v: this.vehView(v) }); }
       }
@@ -287,7 +287,14 @@ export class Room {
     const data = JSON.stringify(msg);
     for (const [ws, s] of this.sessions) if (s.ready && ws !== except) this.send(ws, data);
   }
-  vehView(v) { return { id: v.id, type: v.type, color: v.color, p: v.p, q: v.q, driver: v.driver, ctrl: v.ctrl }; }
+  vehView(v) { return { id: v.id, type: v.type, color: v.color, p: v.p, q: v.q, driver: v.driver, ctrl: v.ctrl, seats: v.pass || [] }; }
+  /** Mitfahrer-Plätze freigeben, die dieser Spieler belegt. */
+  unseat(sid) {
+    for (const v of this.vehicles.values()) {
+      const i = (v.pass || []).indexOf(sid);
+      if (i >= 0) { v.pass[i] = null; this.broadcast({ t: 'vseat', id: v.id, seats: v.pass }); }
+    }
+  }
 
   sendCreatures(s) {
     if (!s.pos) return;
@@ -325,6 +332,7 @@ export class Room {
     this.sessions.delete(ws);
     for (const v of this.vehicles.values()) {
       if (v.driver === s.sid) v.driver = null;
+      const pi = (v.pass || []).indexOf(s.sid); if (pi >= 0) { v.pass[pi] = null; if (s.ready) this.broadcast({ t: 'vseat', id: v.id, seats: v.pass }); }
       if (v.ctrl === s.sid) { v.ctrl = null; this.broadcast({ t: 'vown', id: v.id, driver: v.driver, ctrl: null }); }
     }
     for (const c of this.creatures.values()) if (c.rider === s.sid) c.rider = null;
@@ -428,6 +436,7 @@ export class Room {
       buildings: [...this.buildings.values()].map(({ inv, ...b }) => b), ev: this.eventView(), records: this.records,
     });
     this.broadcast({ t: 'join', id: s.sid, name: s.name, color: s.color, admin: !!s.admin }, ws);
+    if (this.frozen && !s.admin) this.send(ws, { t: 'freeze', on: true, by: 'Admin' });
     if (!saved && !pid.startsWith('psmoke')) putDoc(this.env.DB, C.players, pid, s.profile).catch(() => {});
     this.startLoop();
     this.writeStatus(true);
@@ -440,7 +449,7 @@ export class Room {
         if (!Array.isArray(m.p) || m.p.length !== 3 || !m.p.every(Number.isFinite)) return;
         s.pos = m.p.map((n) => round(n, 100));
         s.dead = !!m.dead;
-        const st = { p: s.pos, r: round(Number(m.r) || 0, 1000), v: m.v ? String(m.v).slice(0, 24) : 0, sp: round(Number(m.sp) || 0), w: m.w ? String(m.w).slice(0, 24) : '', a: m.a ? 1 : 0, hp: Math.round(clampNum(m.hp, 0, 100, 100)), tq: Array.isArray(m.tq) ? m.tq.slice(0, 4).map((n) => round(Number(n) || 0, 1000)) : undefined, ride: m.ride ? String(m.ride).slice(0, 24) : '', fly: m.fly ? 1 : 0 };
+        const st = { p: s.pos, r: round(Number(m.r) || 0, 1000), v: m.v ? String(m.v).slice(0, 24) : 0, sp: round(Number(m.sp) || 0), w: m.w ? String(m.w).slice(0, 24) : '', a: m.a ? 1 : 0, hp: Math.round(clampNum(m.hp, 0, 100, 100)), tq: Array.isArray(m.tq) ? m.tq.slice(0, 4).map((n) => round(Number(n) || 0, 1000)) : undefined, ride: m.ride ? String(m.ride).slice(0, 24) : '', fly: m.fly ? 1 : 0, se: Math.floor(clampNum(m.se, 0, 16, 0)) };
         s.st = st; s.stDirty = true;
         break;
       }
@@ -510,12 +519,27 @@ export class Room {
       case 'venter': {
         const v = this.vehicles.get(m.id); if (!v || !s.pos) return;
         const ctrlAlive = v.ctrl && [...this.sessions.values()].some((x) => x.sid === v.ctrl);
+        if ((v.pass || []).includes(s.sid)) return;
         if (v.driver || (ctrlAlive && v.ctrl !== s.sid && now() - v.ctrlAt < 8000)) { this.send(ws, { t: 'msg', text: 'Dieses Fahrzeug wird gerade benutzt.' }); return; }
         if (Math.hypot(v.p[0] - s.pos[0], v.p[2] - s.pos[2]) > 8) return;
         v.driver = s.sid; v.ctrl = s.sid; v.ctrlAt = now();
         this.broadcast({ t: 'vown', id: v.id, driver: v.driver, ctrl: v.ctrl });
         break;
       }
+      case 'vsit': {
+        // Mitfahren: freien Platz in einem Fahrzeug belegen
+        const v = this.vehicles.get(m.id); if (!v || !s.pos || v.driver === s.sid) return;
+        const n = (D.VEHICLE_TYPES[v.type] || {}).seats || 0;
+        if (Math.hypot(v.p[0] - s.pos[0], v.p[2] - s.pos[2]) > 9) return;
+        this.unseat(s.sid);
+        v.pass = Array.from({ length: n }, (_, i) => (v.pass && v.pass[i]) || null);
+        const free = v.pass.indexOf(null);
+        if (free < 0) { this.send(ws, { t: 'msg', text: n ? 'Alle Plätze sind besetzt.' : 'In diesem Fahrzeug ist nur Platz für den Fahrer.' }); return; }
+        v.pass[free] = s.sid;
+        this.broadcast({ t: 'vseat', id: v.id, seats: v.pass });
+        break;
+      }
+      case 'vstand': this.unseat(s.sid); break;
       case 'vexit': {
         const v = this.vehicles.get(m.id); if (!v || v.driver !== s.sid) return;
         v.driver = null; v.ctrlAt = now();
@@ -760,8 +784,69 @@ export class Room {
         this.broadcast({ t: 'msg', text: m.on ? 'Kämpfe zwischen Spielern sind jetzt AN.' : 'Kämpfe zwischen Spielern sind jetzt AUS.', big: 1 });
         break;
       }
+      case 'world': {
+        // Wetter und Tageszeit direkt aus dem Spiel ändern
+        const ch = {};
+        if (['Klar', 'Nebel', 'Regen', 'Sturm'].includes(m.weather)) ch.weather = m.weather;
+        if (['Finsternis', 'Morgen', 'Tag', 'Abend', 'Nacht', 'Zyklus'].includes(m.time_mode)) ch.time_mode = m.time_mode;
+        if (Object.keys(ch).length) this.saveSettings(ch, `${s.name} hat ${[ch.weather && 'Wetter: ' + ch.weather, ch.time_mode && 'Tageszeit: ' + ch.time_mode].filter(Boolean).join(', ')} eingestellt.`);
+        break;
+      }
+      case 'spawnhere': {
+        if (!s.pos) return;
+        this.saveSettings({ spawn_x: Math.round(s.pos[0]), spawn_z: Math.round(s.pos[2]) });
+        this.send(ws, { t: 'msg', text: `Neuer Startplatz: ${Math.round(s.pos[0])}, ${Math.round(s.pos[2])}` });
+        break;
+      }
+      case 'event': this.startEvent({ type: m.type, minutes: m.minutes, item: m.item || 'holz', target: m.target || (m.type === 'bauen' ? 30 : 200), xp: 200, coins: 50 }); break;
+      case 'eventstop': if (this.event) this.endEvent(this.event.type === 'jagd' || this.event.type === 'doppelt'); break;
+      case 'callveh': {
+        // Nächstes freies Fahrzeug (optional eines Typs) neben den Admin holen
+        if (!s.pos) return;
+        const busy = (v) => v.driver || (v.pass || []).some(Boolean) || (v.ctrl && now() - v.ctrlAt < 8000);
+        const list = [...this.vehicles.values()].filter((v) => !busy(v) && (!m.type || v.type === m.type))
+          .sort((a, b) => Math.hypot(a.p[0] - s.pos[0], a.p[2] - s.pos[2]) - Math.hypot(b.p[0] - s.pos[0], b.p[2] - s.pos[2]));
+        const v = list[0];
+        if (!v) { this.send(ws, { t: 'msg', text: 'Kein freies Fahrzeug gefunden.' }); return; }
+        const yaw = Number(m.yaw) || 0, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+        const x = s.pos[0] + fx * 7, z = s.pos[2] + fz * 7, ry = Math.atan2(-fz, fx);
+        v.p = [round(x), round(heightAt(x, z) + 2, 100), round(z)]; v.q = [0, round(Math.sin(ry / 2), 1000), 0, round(Math.cos(ry / 2), 1000)];
+        v.ctrl = null; v.dirty = true;
+        this.broadcast({ t: 'vdef', v: this.vehView(v) });
+        this.send(ws, { t: 'msg', text: `${(D.VEHICLE_TYPES[v.type] || {}).name || 'Fahrzeug'} ist da.` });
+        break;
+      }
+      case 'bringall': {
+        if (!s.pos) return; let i = 0;
+        for (const x of this.sessions.values()) {
+          if (!x.ready || x === s) continue;
+          const a = (i++ / 12) * Math.PI * 2, r = 3 + Math.floor(i / 12) * 2;
+          this.send(x.ws, { t: 'admin', op: 'teleport', p: [s.pos[0] + Math.cos(a) * r, s.pos[1], s.pos[2] + Math.sin(a) * r] });
+        }
+        this.send(ws, { t: 'msg', text: `${i} Spieler hergeholt.` });
+        break;
+      }
+      case 'freeze': {
+        this.frozen = !!m.on;
+        for (const x of this.sessions.values()) if (x.ready && !x.admin) this.send(x.ws, { t: 'freeze', on: this.frozen, by: s.name });
+        this.send(ws, { t: 'msg', text: this.frozen ? 'Alle Spieler sind eingefroren.' : 'Alle Spieler können sich wieder bewegen.' });
+        break;
+      }
+      case 'resetveh': this.runCommand({ op: 'reset_vehicles' }).catch(() => {}); this.send(ws, { t: 'msg', text: 'Alle Fahrzeuge stehen wieder am Startplatz.' }); break;
+      case 'respawncr': this.runCommand({ op: 'respawn_creatures' }).catch(() => {}); this.send(ws, { t: 'msg', text: 'Kreaturen wurden neu verteilt.' }); break;
+      case 'healall': for (const x of this.sessions.values()) if (x.ready) this.send(x.ws, { t: 'admin', op: 'heal' }); break;
       default: break;
     }
+  }
+
+  /** Einstellungen ändern, speichern und an alle schicken (ohne doppeltes Neuladen). */
+  saveSettings(changes, announce = '') {
+    Object.assign(this.cfg.settings, changes);
+    this.version += 1; this.cfg.settings.version = this.version;
+    patchDoc(this.env.DB, C.settings, 'main', { ...changes, version: this.version }).catch(() => {});
+    this.broadcast({ t: 'config', config: this.publicConfig(), version: this.version });
+    if (announce) this.broadcast({ t: 'msg', text: announce });
+    this.writeStatus(true);
   }
 
   /* ---------- Dashboard-Anbindung ---------- */
@@ -825,7 +910,7 @@ export class Room {
         for (const v of this.vehicles.values()) {
           const d = await getDoc(db, C.vehicles, v.id); if (!d) continue;
           const x = Number(d.x) || 0, z = Number(d.z) || 0, ry = Number(d.ry) || 0;
-          v.p = [x, heightAt(x, z) + 1.4, z]; v.q = [0, Math.sin(ry / 2), 0, Math.cos(ry / 2)]; v.driver = null; v.ctrl = null;
+          v.p = [x, heightAt(x, z) + 1.4, z]; v.q = [0, Math.sin(ry / 2), 0, Math.cos(ry / 2)]; v.driver = null; v.ctrl = null; v.pass = [];
           await patchDoc(db, C.vehicles, v.id, { p: v.p, q: v.q });
         }
         this.broadcast({ t: 'vreset', vehicles: [...this.vehicles.values()].map((v) => this.vehView(v)) });

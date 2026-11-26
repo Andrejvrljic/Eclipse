@@ -31,10 +31,18 @@ Zaun, Lagerfeuer, Schlafsack und **Lagertruhe** (16 Plätze, nur Besitzer und Ad
 volle Truhen lassen sich nicht abreißen). R dreht Bauteile. Admins können im Admin-Menü „Kostenlos bauen“ einschalten.
 
 ### Fahrzeuge
-26 Fahrzeuge in 6 Typen: Geländewagen, Sportwagen (schnell, tief), Buggy (geländegängig), Pickup, Quad und Truck –
-10 am Startplatz, 2 an der Rennstrecke, der Rest auf der Insel verteilt. Bei Nacht und Sturm haben Fahrzeuge Scheinwerfer.
+34 Fahrzeuge in 9 Typen: Geländewagen, Sportwagen, Rennwagen, Buggy, Pickup, Monstertruck, **Schulbus** (10 Mitfahrer),
+Quad und Truck – über ein Dutzend am Startplatz, 5 an der Rennstrecke, der Rest auf der Insel verteilt.
+**Mitfahren:** E an einem Fahrzeug mit Fahrer belegt einen freien Platz (Pickup 5, Bus 10, die meisten anderen 1).
+**Boost:** Shift im Fahrzeug (auf Tablets: Joystick ganz nach vorn). Bei Nacht und Sturm haben Fahrzeuge Scheinwerfer.
 Neue Inhalte werden in bestehende Welten automatisch nachgetragen (`content_version` in `game_settings/main`),
 ohne Änderungen aus dem Dashboard zu überschreiben.
+
+### Admin-Menü im Spiel (P)
+Fliegen, unverwundbar, kostenlos bauen, Wetter und Tageszeit, Startplatz setzen, Events starten/beenden,
+Fahrzeug (auch nach Typ) herholen, alle Fahrzeuge zurücksetzen, alle Spieler herholen, alle einfrieren/auftauen
+(auch wer später beitritt), alle heilen, Kreaturen erschaffen/entfernen/neu verteilen, Gegenstände geben,
+Spieler teleportieren/herholen/heilen/entfernen, Ansagen, PvP. Auf der Inselkarte (M) teleportiert ein Klick dorthin.
 
 ### Aktivitäten
 - **Hindernisparcours** am Startplatz (grüner Start, goldenes Ziel; Boden berühren = von vorn), Bestzeiten in `game_records/parcours`

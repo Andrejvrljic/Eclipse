@@ -42,13 +42,17 @@ export const DEFAULT_SETTINGS = {
 };
 
 // Fahrzeugtypen (Fahrphysik und Modell sind im Spiel festgelegt)
+// seats = Mitfahrer-Plätze (ohne Fahrer)
 export const VEHICLE_TYPES = {
-  gelaendewagen: { name: 'Geländewagen' },
-  quad: { name: 'Quad' },
-  truck: { name: 'Truck' },
-  sportwagen: { name: 'Sportwagen' },
-  buggy: { name: 'Buggy' },
-  pickup: { name: 'Pickup' },
+  gelaendewagen: { name: 'Geländewagen', seats: 1 },
+  quad: { name: 'Quad', seats: 1 },
+  truck: { name: 'Truck', seats: 1 },
+  sportwagen: { name: 'Sportwagen', seats: 1 },
+  buggy: { name: 'Buggy', seats: 0 },
+  pickup: { name: 'Pickup', seats: 5 },
+  bus: { name: 'Schulbus', seats: 10 },
+  monstertruck: { name: 'Monstertruck', seats: 1 },
+  rennwagen: { name: 'Rennwagen', seats: 0 },
 };
 
 // id → Fahrzeug in der Welt (Position wird vom Spiel fortlaufend gespeichert)
@@ -82,6 +86,15 @@ export const DEFAULT_VEHICLES = {
   v24: { type: 'gelaendewagen', color: '#10B981', x: -11, z: -270, ry: 0.3, order: 24 },
   v25: { type: 'buggy', color: '#FB7185', x: 166, z: -250, ry: -1.0, order: 25 },
   v26: { type: 'sportwagen', color: '#C084FC', x: 289, z: 81, ry: 2.8, order: 26 },
+  // Schulbusse für die ganze Klasse, Monstertrucks und Rennwagen
+  v27: { type: 'bus', color: '#FACC15', x: 14, z: 24, ry: 0, order: 27 },
+  v28: { type: 'bus', color: '#F59E0B', x: -160, z: 200, ry: 1.2, order: 28 },
+  v29: { type: 'monstertruck', color: '#DC2626', x: -1, z: -29, ry: 0, order: 29 },
+  v30: { type: 'monstertruck', color: '#2563EB', x: 200, z: -180, ry: 0.4, order: 30 },
+  v31: { type: 'rennwagen', color: '#EF4444', x: 104, z: 18, ry: 1.9, order: 31 },
+  v32: { type: 'rennwagen', color: '#3B82F6', x: 101, z: 12, ry: 1.9, order: 32 },
+  v33: { type: 'rennwagen', color: '#10B981', x: 98, z: 6, ry: 1.9, order: 33 },
+  v34: { type: 'pickup', color: '#F43F5E', x: 12, z: -28, ry: 0.2, order: 34 },
 };
 
 // id → Gegenstand
@@ -195,8 +208,9 @@ export const INV_SLOTS = 32;
 export const HOTBAR = 8;
 
 /** Inhalte, die nach dem ersten Start dazugekommen sind (werden in bestehende Welten nachgetragen). */
-export const CONTENT_VERSION = 3;
+export const CONTENT_VERSION = 4;
 export const CONTENT_ADDED = {
   2: { items: ['treppe', 'fensterwand', 'zaun', 'dach', 'truhe'], recipes: ['r_zaun', 'r_truhe', 'r_fensterwand', 'r_treppe', 'r_dach'], quests: ['q_truhe', 'q_obergeschoss'] },
   3: { vehicles: ['v11', 'v12', 'v13', 'v14', 'v15', 'v16', 'v17', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24', 'v25', 'v26'] },
+  4: { vehicles: ['v27', 'v28', 'v29', 'v30', 'v31', 'v32', 'v33', 'v34'] },
 };

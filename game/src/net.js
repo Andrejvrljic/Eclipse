@@ -91,7 +91,7 @@ export function createNet(scene, opts) {
         r.pos.lerp(r.target, k);
         let d = r.targetRot - r.rot; d = Math.atan2(Math.sin(d), Math.cos(d)); r.rot += d * k;
         // Fahrer sitzt sichtbar im Fahrzeug, Reiter auf dem Tier
-        const seat = s.v && mounts.seat ? mounts.seat(s.v) : null;
+        const seat = s.v && mounts.seat ? mounts.seat(s.v, s.se || 0) : null;
         const mount = s.ride && mounts.mount ? mounts.mount(s.ride) : null;
         const hidden = !r.has || (s.v && !seat) || (s.ride && !mount);
         r.fig.visible = !hidden; r.label.visible = r.has;

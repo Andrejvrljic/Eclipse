@@ -119,10 +119,30 @@ export function createUI(ctx) {
             <button class="btn" data-adm="heal-me">Heilen</button>
             <button class="btn" data-adm="spawn-tp">Zum Startplatz</button></div>
             <p class="hint">Fliegen: Leertaste hoch, C runter, Shift schneller.</p></section>
+          <section><h4>Welt</h4><div class="row">
+            <select id="adm-weather">${['Klar', 'Nebel', 'Regen', 'Sturm'].map((w) => `<option ${cfg().settings.weather === w ? 'selected' : ''}>${w}</option>`).join('')}</select>
+            <select id="adm-time">${['Finsternis', 'Morgen', 'Tag', 'Abend', 'Nacht', 'Zyklus'].map((w) => `<option ${cfg().settings.time_mode === w ? 'selected' : ''}>${w}</option>`).join('')}</select>
+            <button class="btn" data-adm="world">Übernehmen</button>
+            <button class="btn ghost" data-adm="spawnhere">Startplatz hierher</button></div>
+            <p class="hint">Teleport: Karte mit M öffnen und auf einen Ort klicken.</p></section>
+          <section><h4>Events</h4><div class="row">
+            <select id="adm-ev"><option value="schatz">Schatzsuche</option><option value="sammeln">Team-Sammeln (Holz)</option><option value="bauen">Bauprojekt</option><option value="jagd">Kreaturen-Wettbewerb</option><option value="doppelt">Doppelte EP</option></select>
+            <input id="adm-evmin" type="number" min="1" max="120" value="10" title="Minuten">
+            <button class="btn" data-adm="event">Starten</button><button class="btn ghost" data-adm="eventstop">Beenden</button></div></section>
+          <section><h4>Fahrzeuge</h4><div class="row">
+            <select id="adm-vt"><option value="">Nächstes freies</option>${Object.entries(ctx.vehicleTypes()).map(([k, v]) => `<option value="${esc(k)}">${esc(v.name)}</option>`).join('')}</select>
+            <button class="btn" data-adm="callveh">Herholen</button>
+            <button class="btn ghost" data-adm="resetveh">Alle zurück an den Start</button></div></section>
+          <section><h4>Alle Spieler</h4><div class="row">
+            <button class="btn" data-adm="bringall">Alle zu mir holen</button>
+            <button class="btn ${a.frozen ? 'on' : ''}" data-adm="freeze">${a.frozen ? 'Auftauen' : 'Alle einfrieren'}</button>
+            <button class="btn" data-adm="healall">Alle heilen</button></div>
+            <p class="hint">Einfrieren hält alle anderen an – praktisch für Ansagen. Admins bleiben beweglich.</p></section>
           <section><h4>Kreaturen</h4><div class="row">
             <select id="adm-sp">${spOpts}</select><input id="adm-n" type="number" min="1" max="20" value="1">
             <button class="btn" data-adm="spawn">Erschaffen</button>
-            <button class="btn ghost" data-adm="clear">Im Umkreis 60 m entfernen</button></div></section>
+            <button class="btn ghost" data-adm="clear">Im Umkreis 60 m entfernen</button>
+            <button class="btn ghost" data-adm="respawncr">Alle neu verteilen</button></div></section>
           <section><h4>Gegenstände</h4><div class="row">
             <select id="adm-item">${itOpts}</select><input id="adm-in" type="number" min="1" max="1000" value="10">
             <button class="btn" data-adm="give-me">Mir geben</button></div></section>
@@ -174,6 +194,7 @@ export function createUI(ctx) {
           ctx.onAdmin(adm.dataset.adm, {
             pid: pSel ? pSel.value : '', sp: $('adm-sp')?.value, n: Number($('adm-n')?.value) || 1,
             item: $('adm-item')?.value, itemN: Number($('adm-in')?.value) || 1, text: $('adm-msg')?.value || '',
+            weather: $('adm-weather')?.value, time: $('adm-time')?.value, ev: $('adm-ev')?.value, evMin: Number($('adm-evmin')?.value) || 10, vtype: $('adm-vt')?.value || '',
           });
           if (adm.dataset.adm === 'msg' && $('adm-msg')) $('adm-msg').value = '';
           api.render();

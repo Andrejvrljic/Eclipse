@@ -31,7 +31,7 @@ let config = { settings: D.DEFAULT_SETTINGS, items: D.DEFAULT_ITEMS, recipes: D.
 let playing = false, joined = false, dead = false, admin = false, god = false;
 let driving = null, pendingEnter = null, riding = null, ridePose = null;
 let yaw = Math.PI * 0.15, pitch = 0.3, pendingJump = false, selSlot = 0, stamina = 100;
-let buildRot = 0, freeBuild = false, chest = null;
+let buildRot = 0, freeBuild = false, chest = null, passenger = null, frozen = false, adminFrozen = false;
 let attackCd = 0, swingT = 0, lastSave = 0, lastVSend = 0, lastRideSend = 0, damageFlash = 0, knockCd = 0;
 const projectiles = [];
 const depleted = new Map(); // Rohstoffquelle → { hits, until }
@@ -126,7 +126,8 @@ async function boot() {
   });
   ui = createUI({
     state, getConfig, nearStation: (type) => buildings.nearStation(player.feet(tmp), type),
-    isAdmin: () => admin, adminState: () => ({ fly: player?.flying, god, freeBuild }),
+    isAdmin: () => admin, adminState: () => ({ fly: player?.flying, god, freeBuild, frozen: adminFrozen }),
+    vehicleTypes: () => D.VEHICLE_TYPES,
     chest: () => chest,
     onChestPut: (i) => { const s = state.profile.inv[i]; if (s && chest) net.send({ t: 'chestput', id: chest.id, item: s.id, n: s.n }); },
     onChestTake: (i) => { if (chest && chest.inv[i]) net.send({ t: 'chesttake', id: chest.id, slot: i }); },
@@ -156,7 +157,7 @@ async function boot() {
       if (k === 'inventory') ui.toggle('inv');
       else if (k === 'admin' && admin) ui.toggle('admin');
       else if (k === 'escape' && map.open) map.toggle(false);
-      else if (k === 'map') { map.toggle(); if (map.open) document.exitPointerLock?.(); }
+      else if (k === 'map') { openMap(!map.open); }
       else if (k === 'escape' && ui.open) ui.close();
       else if (k === 'help') $('help').hidden = !$('help').hidden;
     },
@@ -164,11 +165,24 @@ async function boot() {
     onScroll: (d) => { selSlot = (selSlot + d + D.HOTBAR) % D.HOTBAR; },
   });
   $('pause').addEventListener('click', () => canvas.requestPointerLock?.()?.catch?.(() => {}));
-  $('minimap').addEventListener('click', () => { map.toggle(true); document.exitPointerLock?.(); });
-  $('mapwrap').addEventListener('click', () => { map.toggle(false); if (!input.state.touch) canvas.requestPointerLock?.()?.catch?.(() => {}); });
+  $('minimap').addEventListener('click', () => openMap(true));
+  $('mapwrap').addEventListener('click', (ev) => {
+    // Admins: Klick auf die Karte teleportiert dorthin
+    if (admin && ev.target.id === 'bigmap') {
+      const w = map.toWorld(ev);
+      if (w) { if (driving) leaveVehicle(); if (passenger) leaveSeat(); if (riding) stopRide(); const l = world.findLand(w.x, w.z); player.teleport(l.x, world.heightAt(l.x, l.z) + 0.5, l.z); ui.toast(`Teleportiert nach ${Math.round(l.x)}, ${Math.round(l.z)}`); }
+    }
+    map.toggle(false); if (!input.state.touch) canvas.requestPointerLock?.()?.catch?.(() => {});
+  });
   $('loading').textContent = '';
   $('play').disabled = false; $('play').textContent = 'Spielen';
   requestAnimationFrame(frame);
+}
+
+function openMap(on) {
+  $('maphint').textContent = admin ? 'Admin: Klick auf einen Ort teleportiert dich · M schließt' : 'Inselkarte · M oder Tippen schließt';
+  map.toggle(on);
+  if (on) document.exitPointerLock?.();
 }
 
 /* ---------- Verbindung ---------- */
@@ -228,7 +242,7 @@ function onServer(m) {
         if (config.settings.motd) ui.big(config.settings.motd);
         if (admin) ui.toast('Du bist Admin. Drück P für das Admin-Menü.', 'item');
         if (!ls.get('helpSeen')) { $('help').hidden = false; ls.set('helpSeen', '1'); setTimeout(() => { $('help').hidden = true; }, 12000); }
-        if (new URLSearchParams(location.search).has('debug')) window.__eclipse = { acts, atmos, get config() { return config; }, player, vehicles, creatures, buildings, world, physics, state, net, useHeld, interact, leaveVehicle, adminOp, get driving() { return driving; }, get riding() { return riding; }, setYaw: (v) => { yaw = v; }, setSlot: (i) => { selSlot = i; }, get dead() { return dead; }, hurt };
+        if (new URLSearchParams(location.search).has('debug')) window.__eclipse = { acts, atmos, get config() { return config; }, player, vehicles, creatures, buildings, world, physics, state, net, useHeld, interact, leaveVehicle, adminOp, get driving() { return driving; }, get riding() { return riding; }, get passenger() { return passenger; }, setYaw: (v) => { yaw = v; }, setSlot: (i) => { selSlot = i; }, get dead() { return dead; }, hurt };
       }
       $('admin-badge').hidden = !admin;
       break;
@@ -240,6 +254,7 @@ function onServer(m) {
       break;
     case 'config': config = m.config; atmos.apply(config.settings); creatures.clear(); ui.render(); break;
     case 'ev': acts.setEvent(m.ev, m); break;
+    case 'freeze': frozen = !!m.on; if (frozen) { if (driving) leaveVehicle(); ui.big(`${m.by || 'Ein Admin'} hat alle eingefroren. Kurz zuhören!`); } else ui.toast('Du kannst dich wieder bewegen.'); break;
     case 'chest': {
       if (m.put && m.put.n > 0) state.remove(m.put.item, m.put.n);
       if (m.took && m.took.n > 0) {
@@ -290,14 +305,21 @@ function onServer(m) {
       break;
     }
     case 'vs': vehicles.remote(m.id, m.p, m.q, m.sp, m.st); break;
+    case 'vseat': {
+      vehicles.setSeats(m.id, m.seats);
+      const idx = (m.seats || []).indexOf(net.id);
+      if (idx >= 0 && !passenger && !driving) startSeat(m.id, idx);
+      else if (passenger && passenger.id === m.id && idx < 0) leaveSeat(false);
+      break;
+    }
     case 'vdef': vehicles.define(m.v, net.id); break;
-    case 'vdel': if (driving && driving.id === m.id) leaveVehicle(false); vehicles.remove(m.id); break;
-    case 'vreset': if (driving) leaveVehicle(false); vehicles.sync(m.vehicles, net.id); break;
+    case 'vdel': if (driving && driving.id === m.id) leaveVehicle(false); if (passenger && passenger.id === m.id) leaveSeat(false); vehicles.remove(m.id); break;
+    case 'vreset': if (driving) leaveVehicle(false); if (passenger) leaveSeat(false); vehicles.sync(m.vehicles, net.id); break;
     case 'admin': {
       if (m.op === 'give') { state.add(m.item, m.n, { silent: true }); ui.toast(`${m.by} hat dir ${m.n}× ${state.def(m.item)?.name || m.item} gegeben.`, 'item'); }
       if (m.op === 'set') { Object.assign(state.profile, m.f); if (m.f.hp !== undefined) state.profile.hp = Math.min(state.maxHp, m.f.hp); state.load(state.profile); ui.toast('Dein Spielstand wurde vom Admin geändert.'); }
       if (m.op === 'heal') { state.profile.hp = state.maxHp; state.profile.hunger = 100; if (dead) respawn(true); ui.toast('Du wurdest geheilt.'); }
-      if (m.op === 'teleport' && Array.isArray(m.p)) { if (driving) leaveVehicle(false); if (riding) stopRide(); player.teleport(m.p[0], m.p[1], m.p[2]); ui.toast('Du wurdest teleportiert.'); }
+      if (m.op === 'teleport' && Array.isArray(m.p)) { if (driving) leaveVehicle(false); if (passenger) leaveSeat(); if (riding) stopRide(); player.teleport(m.p[0], m.p[1], m.p[2]); ui.toast('Du wurdest teleportiert.'); }
       if (m.op === 'reset') { state.load(m.profile); ui.toast('Dein Spielstand wurde zurückgesetzt.'); }
       break;
     }
@@ -317,6 +339,7 @@ function hurt(n, from) {
 function die(by) {
   dead = true;
   if (driving) leaveVehicle(false);
+  if (passenger) leaveSeat();
   if (riding) stopRide();
   document.exitPointerLock?.();
   ui.death(true, by);
@@ -357,6 +380,27 @@ function leaveVehicle(sendExit = true) {
   }
 }
 
+/** Mitfahren auf einem freien Platz (Platz wird vom Server vergeben). */
+function startSeat(id, idx) {
+  const e = vehicles.get(id); if (!e) return;
+  passenger = { id, seat: idx + 1 };
+  player.setHidden(true, true);
+  const f = vehicles.forward(e); yaw = Math.atan2(-f.x, -f.z);
+  ui.toast(`Du fährst mit (${D.VEHICLE_TYPES[e.type]?.name || 'Fahrzeug'}). E zum Aussteigen.`);
+}
+function leaveSeat(send = true) {
+  const p = passenger; passenger = null; if (!p) return;
+  if (send) net.send({ t: 'vstand', id: p.id });
+  const e = vehicles.get(p.id);
+  player.setHidden(false);
+  if (!e) return;
+  const ex = vehicles.exitPoint(e), v = vehicles.velocity(e);
+  const gy = Math.max(world.heightAt(ex.x, ex.z), SEA_LEVEL - 0.5);
+  player.teleport(ex.x, Math.max(gy, ex.y - 0.6), ex.z);
+  const speed = Math.hypot(v.x, v.z);
+  if (speed > 5) { player.tumble({ x: v.x * 0.85, y: 3 + speed * 0.08, z: v.z * 0.85 }); ui.toast('Abgesprungen!'); }
+}
+
 function startRide(m) {
   const c = creatures.map.get(m.id);
   const sp = config.species[m.sp]; if (!sp) return;
@@ -394,6 +438,16 @@ function adminOp(op, a) {
     case 'kick': net.send({ t: 'adm', op: 'kick', sid }); break;
     case 'msg': if (a.text.trim()) net.send({ t: 'adm', op: 'msg', text: a.text }); break;
     case 'pvp': net.send({ t: 'adm', op: 'pvp', on: !config.settings.pvp }); break;
+    case 'world': net.send({ t: 'adm', op: 'world', weather: a.weather, time_mode: a.time }); break;
+    case 'spawnhere': net.send({ t: 'adm', op: 'spawnhere' }); break;
+    case 'event': net.send({ t: 'adm', op: 'event', type: a.ev, minutes: a.evMin }); break;
+    case 'eventstop': net.send({ t: 'adm', op: 'eventstop' }); break;
+    case 'callveh': net.send({ t: 'adm', op: 'callveh', type: a.vtype, yaw }); break;
+    case 'resetveh': net.send({ t: 'adm', op: 'resetveh' }); break;
+    case 'bringall': net.send({ t: 'adm', op: 'bringall' }); break;
+    case 'freeze': adminFrozen = !adminFrozen; net.send({ t: 'adm', op: 'freeze', on: adminFrozen }); break;
+    case 'healall': net.send({ t: 'adm', op: 'healall' }); break;
+    case 'respawncr': net.send({ t: 'adm', op: 'respawncr' }); break;
     default: break;
   }
 }
@@ -479,7 +533,11 @@ function interact() {
   if (acts.interact(feet)) return;
   // Fahrzeug
   const v = vehicles.nearest(feet, 4.5);
-  if (v) { pendingEnter = v.id; net.send({ t: 'venter', id: v.id }); return; }
+  if (v) {
+    if (!v.driver) { pendingEnter = v.id; net.send({ t: 'venter', id: v.id }); return; }
+    if (vehicles.freeSeats(v) > 0) { net.send({ t: 'vsit', id: v.id }); return; }
+    ui.toast((v.spec.seats || []).length ? 'Alle Plätze sind besetzt.' : 'In diesem Fahrzeug ist nur Platz für den Fahrer.', 'warn'); return;
+  }
   // Kreatur füttern oder kommandieren
   const c = creatures.pick(feet, dir, 5);
   if (c) {
@@ -498,12 +556,13 @@ function interact() {
 function updateCamera(dt, inp) {
   if (!ui.open) { yaw -= inp.look.x * 0.0026; pitch = Math.max(-0.45, Math.min(1.3, pitch + inp.look.y * 0.0022)); }
   let dist = 5.8, lift = 1.55;
-  if (driving) {
-    const t = vehicles.position(driving);
+  const camVeh = driving || (passenger && vehicles.get(passenger.id));
+  if (camVeh) {
+    const t = vehicles.position(camVeh);
     focus.lerp(tmp.set(t.x, t.y + 1.3, t.z), 1 - Math.exp(-dt * 20));
-    dist = driving.spec.cam; lift = 1.3;
-    const sp = vehicles.speed(driving);
-    if (performance.now() - inp.lastLook > 1400 && Math.abs(sp) > 2) {
+    dist = camVeh.spec.cam; lift = 1.3;
+    const sp = driving ? vehicles.speed(driving) : 0; // Mitfahrer schauen sich frei um
+    if (driving && performance.now() - inp.lastLook > 1400 && Math.abs(sp) > 2) {
       const f = vehicles.forward(driving); const target = Math.atan2(-f.x, -f.z) + (sp < 0 ? Math.PI : 0);
       let d = target - yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw += d * Math.min(1, dt * 2.5);
       pitch += (0.22 - pitch) * Math.min(1, dt * 1.5);
@@ -547,14 +606,14 @@ function frame(now) {
   }
 
   const inp = input.poll();
-  const blocked = ui.open || dead;
+  const blocked = ui.open || dead || frozen;
   const move = blocked ? { x: 0, y: 0 } : inp.move;
   const stepIn = { ...inp, move };
   if (inp.jump && !blocked) pendingJump = true;
   attackCd -= dt; knockCd -= dt; swingT -= dt;
 
   if (!blocked) {
-    if (inp.interact) { if (driving) leaveVehicle(); else if (!riding) interact(); }
+    if (inp.interact) { if (driving) leaveVehicle(); else if (passenger) leaveSeat(); else if (!riding) interact(); }
     if (inp.ride) {
       if (riding) stopRide();
       else if (!driving) { const c = creatures.pick(player.feet(tmp), aimDir(tmp2), 5, (x) => x.mine); if (c) { if (c.def.rideable) net.send({ t: 'ride', id: c.id }); else ui.toast(`${c.def.name} kann man nicht reiten.`, 'warn'); } }
@@ -574,7 +633,7 @@ function frame(now) {
   while (acc >= DT) {
     const si = { ...stepIn, jump: pendingJump };
     pendingJump = false;
-    if (!driving && !riding) player.step(DT, si, yaw, { canSprint: stamina > 1, canJump: stamina > 8 });
+    if (!driving && !riding && !passenger) player.step(DT, si, yaw, { canSprint: stamina > 1, canJump: stamina > 8 });
     vehicles.step(DT, driving && driving.id, si);
     physics.timestep = DT;
     physics.step();
@@ -604,6 +663,8 @@ function frame(now) {
     player.body.setTranslation({ x: seat.x, y: seat.y + 0.4, z: seat.z }, false);
     player.mesh.position.set(seat.x, seat.y - 0.55, seat.z);
     const f = vehicles.forward(driving); player.mesh.rotation.set(0, Math.atan2(-f.x, -f.z), 0);
+  } else if (passenger && vehicles.get(passenger.id)) {
+    // Sitzposition wird nach vehicles.render gesetzt (sonst hängt die Figur einen Frame hinterher)
   } else if (riding && ridePose) {
     const sc = Number(riding.sp.scale) || 1;
     player.mesh.position.set(ridePose.p.x, ridePose.p.y + 1.35 * sc, ridePose.p.z);
@@ -613,6 +674,12 @@ function frame(now) {
   setHeld(player.mesh, held && !driving ? held.id : '', held && held.def);
 
   vehicles.render(dt);
+  if (passenger && vehicles.get(passenger.id)) {
+    const e = vehicles.get(passenger.id); const seat = vehicles.seatAt(e, passenger.seat, tmp);
+    player.body.setTranslation({ x: seat.x, y: seat.y + 0.4, z: seat.z }, false);
+    player.mesh.position.set(seat.x, seat.y - 0.55, seat.z);
+    const f = vehicles.forward(e); player.mesh.rotation.set(0, Math.atan2(-f.x, -f.z), 0);
+  }
   vehicles.maintain(dt, driving && driving.id, (e) => net.send({ t: 'vrest', id: e.id }));
   // Fahrzeuge melden (12 × pro Sekunde)
   if (now - lastVSend > 80) {
@@ -624,7 +691,7 @@ function frame(now) {
     }
   }
   // Angefahren werden
-  if (!driving && !riding && !player.tumbling && knockCd <= 0 && !player.flying) {
+  if (!driving && !riding && !passenger && !player.tumbling && knockCd <= 0 && !player.flying) {
     const c = player.center(tmp);
     for (const e of vehicles.list.values()) {
       const v = vehicles.velocity(e); const sp = Math.hypot(v.x, v.z);
@@ -691,14 +758,15 @@ function frame(now) {
   // Netz: eigener Zustand
   const feet = player.feet(tmp);
   const tq = player.figureQuat();
-  const wpos = driving ? vehicles.position(driving) : riding && ridePose ? ridePose.p : feet;
+  const pveh = passenger && vehicles.get(passenger.id);
+  const wpos = driving ? vehicles.position(driving) : pveh ? vehicles.position(pveh) : riding && ridePose ? ridePose.p : feet;
   net.sendState({
-    p: [wpos.x, wpos.y, wpos.z], r: player.mesh.rotation.y, v: driving ? driving.id : 0, sp: player.speed,
+    p: [wpos.x, wpos.y, wpos.z], r: player.mesh.rotation.y, v: driving ? driving.id : pveh ? pveh.id : 0, se: pveh ? passenger.seat : 0, sp: player.speed,
     w: held && !driving ? held.id : '', a: swingT > 0 ? 1 : 0, hp: Math.round((p.hp / state.maxHp) * 100),
     tq: tq ? [tq.x, tq.y, tq.z, tq.w] : undefined, ride: riding ? riding.id : '', fly: player.flying ? 1 : 0, dead: dead ? 1 : 0,
   });
   net.update(dt, camera, (id) => state.def(id), {
-    seat: (vid) => { const e = vehicles.get(vid); if (!e) return null; const f = vehicles.forward(e); return { pos: vehicles.seatPos(e, new THREE.Vector3()), yaw: Math.atan2(-f.x, -f.z) }; },
+    seat: (vid, se) => { const e = vehicles.get(vid); if (!e) return null; const f = vehicles.forward(e); return { pos: vehicles.seatAt(e, se || 0, new THREE.Vector3()), yaw: Math.atan2(-f.x, -f.z) }; },
     mount: (cid) => { const c = creatures.map.get(cid); return c ? { pos: c.pos, ry: c.ry, scale: Number(c.def.scale) || 1 } : null; },
   });
   if (now - lastSave > 5000 && state.dirty) { lastSave = now; net.send({ t: 'save', profile: state.serialize() }); state.clean(); }
@@ -732,6 +800,7 @@ function frame(now) {
   let prompt = '';
   if (dead) prompt = '';
   else if (driving) prompt = vehicles.flipped(driving) ? (touch ? 'Umgekippt · Zurücksetzen tippen' : 'Umgekippt · R zum Zurücksetzen') : (touch ? '' : 'E Aussteigen  ·  R Zurücksetzen  ·  Leertaste Handbremse');
+  else if (passenger) prompt = touch ? 'Benutzen: aussteigen' : 'E Aussteigen';
   else if (riding) prompt = touch ? 'Reiten-Knopf: absteigen' : 'F Absteigen  ·  Shift schneller';
   else {
     const f = player.feet(tmp2);
@@ -742,15 +811,18 @@ function frame(now) {
     else if (b && b.b.type === 'truhe') prompt = (touch ? 'Benutzen: ' : 'E ') + 'Truhe öffnen' + (b.b.ownerName ? ` (${b.b.ownerName})` : '');
     else if (acts.prompt(f, touch)) prompt = acts.prompt(f, touch);
     else if (b && b.b.type === 'wand_tuer') prompt = (touch ? 'Benutzen: ' : 'E ') + (b.open ? 'Tür schließen' : 'Tür öffnen');
-    else if (v) prompt = v.driver ? 'Fahrzeug ist besetzt' : (touch ? 'Benutzen: Einsteigen' : `E Einsteigen (${D.VEHICLE_TYPES[v.type]?.name || 'Fahrzeug'})`);
+    else if (v) {
+      const vn = D.VEHICLE_TYPES[v.type]?.name || 'Fahrzeug', free = vehicles.freeSeats(v);
+      prompt = !v.driver ? (touch ? `Benutzen: Einsteigen (${vn})` : `E Einsteigen (${vn})`) : free ? `${touch ? 'Benutzen' : 'E'}: Mitfahren (${vn} · ${free} ${free === 1 ? 'Platz' : 'Plätze'} frei)` : `${vn} ist voll`;
+    }
     else if (c && c.mine) prompt = (touch ? '' : 'E ') + (c.mine === 2 ? 'Folgen lassen' : 'Bleiben lassen') + (c.def.rideable ? (touch ? ' · Reiten-Knopf' : '  ·  F Reiten') : '');
     else if (c && !c.owner && c.def.tame_food && Number(c.def.tame_amount) > 0) prompt = `${touch ? 'Benutzen' : 'E'}: ${c.def.name} mit ${state.def(c.def.tame_food)?.name || c.def.tame_food} füttern (zähmen)`;
     else if (player.swimming) prompt = 'Du schwimmst · gleich geht es zurück an Land';
   }
   $('prompt').textContent = prompt; $('prompt').hidden = !prompt;
   $('speedo').hidden = !driving;
-  if (driving) $('kmh').textContent = String(Math.round(Math.abs(vehicles.speed(driving)) * 3.6));
-  $('btn-use').textContent = driving ? 'Aussteigen' : 'Benutzen';
+  if (driving) { $('kmh').textContent = String(Math.round(Math.abs(vehicles.speed(driving)) * 3.6)); $('boost').style.width = Math.round(driving.boost * 100) + '%'; }
+  $('btn-use').textContent = driving || passenger ? 'Aussteigen' : 'Benutzen';
   $('btn-jump').textContent = driving ? 'Bremse' : 'Springen';
   $('btn-reset').hidden = !driving && !bp;
   $('btn-reset').textContent = driving ? 'Zurücksetzen' : 'Drehen';

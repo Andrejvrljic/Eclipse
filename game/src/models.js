@@ -98,12 +98,16 @@ export function setHeld(fig, itemId, def) {
 /* ---------------- Fahrzeuge ---------------- */
 // Physikwerte je Typ. Front zeigt in +x. Räder: [x, z] relativ zum Fahrgestell.
 export const VEHICLE_SPECS = {
-  gelaendewagen: { half: [1.9, 0.35, 0.95], density: 90, wheels: [[1.3, 0.85], [1.3, -0.85], [-1.3, 0.85], [-1.3, -0.85]], radius: 0.42, rest: 0.45, connY: -0.15, engine: 1500, maxFwd: 27, maxRev: 9, steer: 0.5, seat: [-0.35, 0.9, 0.35], cam: 9.5 },
-  quad: { half: [1.0, 0.3, 0.6], density: 70, wheels: [[0.75, 0.6], [0.75, -0.6], [-0.75, 0.6], [-0.75, -0.6]], radius: 0.34, rest: 0.35, connY: -0.1, engine: 520, maxFwd: 31, maxRev: 7, steer: 0.6, seat: [-0.25, 0.75, 0], cam: 7 },
-  sportwagen: { half: [2.1, 0.28, 0.95], density: 85, wheels: [[1.35, 0.85], [1.35, -0.85], [-1.35, 0.85], [-1.35, -0.85]], radius: 0.36, rest: 0.3, connY: -0.1, engine: 1900, maxFwd: 42, maxRev: 10, steer: 0.42, seat: [-0.3, 0.55, 0.35], cam: 9 },
-  buggy: { half: [1.5, 0.3, 0.85], density: 70, wheels: [[1.05, 0.85], [1.05, -0.85], [-1.0, 0.85], [-1.0, -0.85]], radius: 0.5, rest: 0.55, connY: -0.1, engine: 900, maxFwd: 30, maxRev: 8, steer: 0.55, seat: [-0.2, 0.75, 0], cam: 8 },
-  pickup: { half: [2.3, 0.4, 1.0], density: 85, wheels: [[1.5, 0.9], [1.5, -0.9], [-1.5, 0.9], [-1.5, -0.9]], radius: 0.46, rest: 0.45, connY: -0.2, engine: 2300, maxFwd: 26, maxRev: 8, steer: 0.46, seat: [0.25, 1.05, 0.4], cam: 10 },
-  truck: { half: [2.9, 0.55, 1.2], density: 80, wheels: [[2.0, 1.1], [2.0, -1.1], [-1.9, 1.1], [-1.9, -1.1]], radius: 0.6, rest: 0.55, connY: -0.35, engine: 5200, maxFwd: 21, maxRev: 7, steer: 0.42, seat: [1.6, 1.6, 0.45], cam: 13 },
+  gelaendewagen: { half: [1.9, 0.35, 0.95], density: 90, wheels: [[1.3, 0.85], [1.3, -0.85], [-1.3, 0.85], [-1.3, -0.85]], radius: 0.42, rest: 0.45, connY: -0.15, engine: 1500, maxFwd: 27, maxRev: 9, steer: 0.5, seat: [-0.35, 0.9, 0.35], seats: [[-0.35, 0.9, -0.35]], cam: 9.5 },
+  quad: { half: [1.0, 0.3, 0.6], density: 70, wheels: [[0.75, 0.6], [0.75, -0.6], [-0.75, 0.6], [-0.75, -0.6]], radius: 0.34, rest: 0.35, connY: -0.1, engine: 520, maxFwd: 31, maxRev: 7, steer: 0.6, seat: [-0.25, 0.75, 0], seats: [[-0.7, 0.8, 0]], cam: 7 },
+  sportwagen: { half: [2.1, 0.28, 0.95], density: 85, wheels: [[1.35, 0.85], [1.35, -0.85], [-1.35, 0.85], [-1.35, -0.85]], radius: 0.36, rest: 0.3, connY: -0.1, engine: 1900, maxFwd: 42, maxRev: 10, steer: 0.42, seat: [-0.3, 0.55, 0.35], seats: [[-0.3, 0.55, -0.35]], cam: 9 },
+  buggy: { half: [1.5, 0.3, 0.85], density: 70, wheels: [[1.05, 0.85], [1.05, -0.85], [-1.0, 0.85], [-1.0, -0.85]], radius: 0.5, rest: 0.55, connY: -0.1, engine: 900, maxFwd: 30, maxRev: 8, steer: 0.55, seat: [-0.2, 0.75, 0], seats: [], cam: 8 },
+  pickup: { half: [2.3, 0.4, 1.0], density: 85, wheels: [[1.5, 0.9], [1.5, -0.9], [-1.5, 0.9], [-1.5, -0.9]], radius: 0.46, rest: 0.45, connY: -0.2, engine: 2300, maxFwd: 26, maxRev: 8, steer: 0.46, seat: [0.25, 1.05, 0.4], seats: [[0.25, 1.05, -0.4], [-1.0, 0.95, 0.5], [-1.0, 0.95, -0.5], [-1.8, 0.95, 0.5], [-1.8, 0.95, -0.5]], cam: 10 },
+  bus: { half: [5.0, 1.0, 1.25], density: 30, wheels: [[3.3, 1.1], [3.3, -1.1], [-3.0, 1.1], [-3.0, -1.1]], radius: 0.6, rest: 0.5, connY: -0.75, engine: 5200, maxFwd: 22, maxRev: 7, steer: 0.38, seat: [4.0, 0.25, 0.6],
+    seats: [[2.6, 0.25, 0.65], [2.6, 0.25, -0.65], [1.4, 0.25, 0.65], [1.4, 0.25, -0.65], [0.2, 0.25, 0.65], [0.2, 0.25, -0.65], [-1.0, 0.25, 0.65], [-1.0, 0.25, -0.65], [-2.2, 0.25, 0.65], [-2.2, 0.25, -0.65]], cam: 16 },
+  monstertruck: { half: [2.2, 0.5, 1.1], density: 70, wheels: [[1.5, 1.3], [1.5, -1.3], [-1.5, 1.3], [-1.5, -1.3]], radius: 0.95, rest: 0.7, connY: -0.3, engine: 3400, maxFwd: 26, maxRev: 8, steer: 0.5, seat: [0.1, 1.15, 0.4], seats: [[0.1, 1.15, -0.4]], cam: 12 },
+  rennwagen: { half: [2.3, 0.22, 0.9], density: 90, wheels: [[1.55, 0.85], [1.55, -0.85], [-1.45, 0.9], [-1.45, -0.9]], radius: 0.36, rest: 0.22, connY: -0.05, engine: 2300, maxFwd: 50, maxRev: 8, steer: 0.36, seat: [-0.4, 0.42, 0], seats: [], cam: 8.5 },
+  truck: { half: [2.9, 0.55, 1.2], density: 80, wheels: [[2.0, 1.1], [2.0, -1.1], [-1.9, 1.1], [-1.9, -1.1]], radius: 0.6, rest: 0.55, connY: -0.35, engine: 5200, maxFwd: 21, maxRev: 7, steer: 0.42, seat: [1.6, 1.6, 0.45], seats: [[1.6, 1.6, -0.45]], cam: 13 },
 };
 
 export function makeVehicle(type, color) {
@@ -135,6 +139,34 @@ export function makeVehicle(type, color) {
     add(new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.8, hz * 2), paint), -0.95, 0.55, 0);
     add(new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.1, hz * 1.8), frame), -0.95, 0.95, 0);
     for (const z of [-0.8, 0.8]) { add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.36), light), 2.76, 0.45, z); add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.16, 0.34), tail), -2.76, 0.45, z); }
+  } else if (type === 'bus') {
+    const glass = mat('#18202e', { roughness: 0.1, metalness: 0.8 });
+    const black = mat('#1f1f24', { roughness: 0.7 });
+    add(new THREE.Mesh(new THREE.BoxGeometry(10, 0.25, 2.5), frame), 0, -0.55, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(9.0, 1.2, 2.5), paint), -0.5, 0.2, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(9.0, 0.8, 2.4), glass), -0.5, 1.2, 0);
+    for (let x = -4.6; x <= 3.6; x += 1.2) add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.8, 2.52), paint), x, 1.2, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(9.0, 0.2, 2.5), paint), -0.5, 1.7, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.9, 2.4), paint), 4.5, 0.05, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(9.02, 0.12, 2.52), black), -0.5, 0.65, 0);
+    for (const z of [-0.9, 0.9]) { add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.36), light), 5.01, 0.2, z); add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.32), tail), -5.01, 0.2, z); }
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.35, 1.6), black), 5.01, -0.25, 0);
+  } else if (type === 'monstertruck') {
+    const glass = mat('#1d2738', { roughness: 0.1, metalness: 0.8 });
+    add(new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.3, 1.6), frame), 0, -0.35, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.6, 2.1), paint), 0, 0.25, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.75, 1.95), paint), -0.1, 0.9, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 2.0), glass), -0.1, 0.95, 0);
+    for (const z of [-1.1, 1.1]) add(new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.15, 0.5), frame), 0, 0.5, z * 1.05);
+    for (const z of [-0.75, 0.75]) { add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.16, 0.34), light), 2.21, 0.35, z); add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.16, 0.3), tail), -2.21, 0.35, z); }
+  } else if (type === 'rennwagen') {
+    add(new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.3, 0.8), paint), 0, 0.05, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 1.5), paint), -0.5, 0.05, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 2.0), frame), 2.15, -0.05, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 1.9), frame), -2.1, 0.75, 0);
+    for (const z of [-0.85, 0.85]) bar(-1.95, 0.15, z * 0.5, -2.05, 0.72, z, 0.04);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.35, 0.6), frame), -0.4, 0.3, 0);
+    bar(-0.1, 0.25, 0, -0.35, 0.65, 0, 0.05);
   } else if (type === 'sportwagen') {
     const glass = mat('#141a26', { roughness: 0.1, metalness: 0.9 });
     add(new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.4, 1.85), paint), 0, 0.05, 0);

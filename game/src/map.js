@@ -74,6 +74,13 @@ export function createMap(world, { mini, big, bigWrap }) {
   let bigOpen = false;
   return {
     get open() { return bigOpen; },
+    /** Klickposition auf der großen Karte → Weltkoordinaten. */
+    toWorld(ev) {
+      const r = big.getBoundingClientRect(); if (!r.width) return null;
+      const u = (ev.clientX - r.left) / r.width, v = (ev.clientY - r.top) / r.height;
+      if (u < 0 || u > 1 || v < 0 || v > 1) return null;
+      return { x: (u - 0.5) * SIZE, z: (v - 0.5) * SIZE };
+    },
     toggle(on = !bigOpen) {
       bigOpen = on; bigWrap.hidden = !on;
       if (on) { const s = Math.min(innerWidth, innerHeight) * 0.86; big.width = big.height = Math.round(s * Math.min(2, devicePixelRatio)); big.style.width = big.style.height = s + 'px'; }

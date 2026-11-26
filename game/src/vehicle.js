@@ -31,7 +31,7 @@ export function createVehicles(RAPIER, physics, scene, world) {
       mode: 'remote', driver: v.driver || null, ctrl: v.ctrl || null,
       pos: new THREE.Vector3(px, py, pz), quat: new THREE.Quaternion(qx, qy, qz, qw),
       tPos: new THREE.Vector3(px, py, pz), tQuat: new THREE.Quaternion(qx, qy, qz, qw),
-      sp: 0, st: 0, steer: 0, spin: 0, restT: 0, lastSend: 0,
+      sp: 0, st: 0, steer: 0, spin: 0, restT: 0, lastSend: 0, seats: v.seats || [], boost: 1,
     };
     list.set(v.id, e);
     return e;
@@ -65,13 +65,24 @@ export function createVehicles(RAPIER, physics, scene, world) {
         let e = list.get(v.id);
         if (e && (e.type !== v.type || e.color !== v.color)) { destroy(e); e = null; }
         if (!e) e = build(v);
-        e.driver = v.driver; e.ctrl = v.ctrl;
+        e.driver = v.driver; e.ctrl = v.ctrl; e.seats = v.seats || [];
         if (v.ctrl !== mySid) { setLocal(e, false); e.tPos.fromArray(v.p); e.tQuat.fromArray(v.q); e.pos.copy(e.tPos); e.quat.copy(e.tQuat); }
       }
       for (const e of [...list.values()]) if (!seen.has(e.id)) destroy(e);
     },
     define(v, mySid) { const e = list.get(v.id); if (e) destroy(e); const n = build(v); if (v.ctrl === mySid) setLocal(n, true); },
     remove(id) { const e = list.get(id); if (e) destroy(e); },
+    setSeats(id, seats) { const e = list.get(id); if (e) e.seats = seats || []; },
+    /** Freie Mitfahrer-Plätze. */
+    freeSeats(e) { const n = (e.spec.seats || []).length; let f = 0; for (let i = 0; i < n; i++) if (!e.seats[i]) f++; return f; },
+    /** Sitzposition: 0 = Fahrer, 1… = Mitfahrer. */
+    seatAt(e, idx, out = new THREE.Vector3()) {
+      const off = idx > 0 ? (e.spec.seats || [])[idx - 1] || e.spec.seat : e.spec.seat;
+      const r = e.mode === 'local' ? e.body.rotation() : e.quat;
+      tmpQ.set(r.x, r.y, r.z, r.w);
+      const t = api.position(e);
+      return out.set(off[0], off[1], off[2]).applyQuaternion(tmpQ).add(new THREE.Vector3(t.x, t.y, t.z));
+    },
     owner(id, driver, ctrl, mySid) {
       const e = list.get(id); if (!e) return;
       e.driver = driver; e.ctrl = ctrl;
@@ -104,8 +115,12 @@ export function createVehicles(RAPIER, physics, scene, world) {
         if (e.id === drivenId) {
           const sp = api.speed(e), throttle = input.move.y;
           let engine = 0, brake = 0;
-          const curve = 1 - 0.6 * Math.min(1, (Math.abs(sp) / s.maxFwd) ** 2); // viel Kraft beim Anfahren, weniger bei Höchstgeschwindigkeit
-          if (throttle > 0.05) { if (sp < -0.5) brake = s.engine / 28; else if (sp < s.maxFwd) engine = -s.engine * throttle * curve; }
+          // Boost mit Shift: mehr Kraft und höhere Spitze, solange die Anzeige reicht
+          const boosting = input.sprint && throttle > 0.05 && e.boost > 0.02;
+          if (boosting) e.boost = Math.max(0, e.boost - dt * 0.33); else e.boost = Math.min(1, e.boost + dt * 0.12);
+          const bk = boosting ? 1.7 : 1, maxF = s.maxFwd * (boosting ? 1.3 : 1);
+          const curve = 1 - 0.6 * Math.min(1, (Math.abs(sp) / maxF) ** 2); // viel Kraft beim Anfahren, weniger bei Höchstgeschwindigkeit
+          if (throttle > 0.05) { if (sp < -0.5) brake = s.engine / 28; else if (sp < maxF) engine = -s.engine * bk * throttle * curve; }
           else if (throttle < -0.05) { if (sp > 0.5) brake = s.engine / 28; else if (sp > -s.maxRev) engine = s.engine * 0.6 * -throttle; }
           else brake = s.engine / 450;
           const target = -input.move.x * s.steer * (1 - Math.min(0.55, Math.abs(sp) / 45));
