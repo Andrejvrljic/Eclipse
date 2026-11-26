@@ -609,11 +609,11 @@ export class Game {
 
   // =====================================================================
   // Zielhilfe (für alle Spieler gleich, im Pausemenü einstellbar)
-  // Stufe 0 = aus, 1 = schwach, 2 = mittel, 3 = stark
+  // Stufe 0 = aus, 1 = schwach, 2 = mittel, 3 = stark, 4 = automatisch (zielt selbst)
   // =====================================================================
   assistLevel() {
     const a = this.settings.assist;
-    return a === null || a === undefined ? (this.touch.on ? 2 : 0) : a;
+    return a === null || a === undefined ? 4 : a;
   }
 
   updateAssist(dt, act) {
@@ -621,11 +621,14 @@ export class Game {
     this.onTarget = false;
     const lvl = this.assistLevel();
     if (!act || !lvl || (this.match && this.match.state !== 'live')) return;
-    const cone = [0, 0.07, 0.11, 0.16][lvl];       // Fangbereich (Bogenmaß)
-    const slow = [0, 0.25, 0.4, 0.55][lvl];        // Abbremsen über dem Gegner
-    const pull = [0, 1.2, 2.6, 4.5][lvl];          // Zug Richtung Gegner (rad/s)
+    const auto = lvl >= 4;
+    const cone = [0, 0.07, 0.11, 0.16, 0][lvl];    // Fangbereich (Bogenmaß)
+    const slow = [0, 0.25, 0.4, 0.55, 0.7][lvl];   // Abbremsen über dem Gegner
+    const pull = [0, 1.2, 2.6, 4.5, 0][lvl];       // Zug Richtung Gegner (rad/s)
     const w = this.weapon;
-    const maxD = Math.min(w.range, w.key === 'sniper' ? 160 : 70);
+    const maxD = Math.min(w.range, w.key === 'sniper' ? 200 : auto ? 90 : 70);
+    // Automatisch: alles im sichtbaren Bildausschnitt (etwas kleiner als das Sichtfeld)
+    const autoCone = (this.camera.fov * Math.PI / 180) * 0.5 * 0.9;
     const eye = this.camera.position;
     const o = [eye.x, eye.y, eye.z];
     let best = null;
@@ -642,13 +645,24 @@ export class Game {
       while (ey < -Math.PI) ey += Math.PI * 2;
       const ex = rx - this.pitch;
       // Auf Entfernung wird der Fangbereich etwas kleiner, aus der Nähe größer
-      const c = cone * Math.min(1.6, Math.max(0.6, 12 / dist));
+      const c = auto ? autoCone : cone * Math.min(1.6, Math.max(0.6, 12 / dist));
       const err = Math.hypot(ey, ex);
       if (err > c) continue;
       if (rayMap(o, [dx / dist, dy / dist, dz / dist], dist, BOXES) < dist - 0.4) continue;
-      if (!best || err < best.err) best = { err, ey, ex, c };
+      // Beim aktuellen Ziel bleiben, solange es sichtbar ist (kein Hin- und Herspringen)
+      const score = err - (r.id === this.assistTarget ? 0.25 : 0);
+      if (!best || score < best.score) best = { err, ey, ex, c, score, id: r.id };
     }
+    this.assistTarget = best ? best.id : 0;
     if (!best) return;
+    if (auto) {
+      this.onTarget = best.err < 0.05;
+      this.assistSlow = 1 - slow;
+      const k = Math.min(1, dt * 14);
+      this.yaw += best.ey * k;
+      this.pitch = Math.max(-1.52, Math.min(1.52, this.pitch + best.ex * k));
+      return;
+    }
     this.onTarget = best.err < best.c * 0.5;
     this.assistSlow = 1 - slow;
     const looking = this.firing || Math.hypot(this.body.v[0], this.body.v[2]) > 1 || (this.touch.on && this.touch.look.size > 0);
