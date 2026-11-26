@@ -117,6 +117,7 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; margin-right: 3p
 #crosshair i:nth-child(2) { top: var(--gap, 6px); }
 #crosshair i:nth-child(3) { right: var(--gap, 6px); }
 #crosshair i:nth-child(4) { left: var(--gap, 6px); }
+#crosshair.target i { background: #ff5d73; }
 #hitmarker { opacity: 0; }
 #hitmarker i { position: absolute; width: 2px; height: 9px; background: #fff; left: -1px; top: -4.5px; }
 #hitmarker i:nth-child(1) { transform: rotate(45deg) translateY(-10px); }

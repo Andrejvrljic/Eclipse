@@ -182,8 +182,10 @@ function syncSettingsUi() {
   $('s-fov').value = s.fov; $('o-fov').textContent = s.fov + '°';
   $('s-vol').value = s.vol; $('o-vol').textContent = Math.round(s.vol * 100) + ' %';
   $('s-invert').checked = !!s.invert;
+  const al = game.assistLevel();
+  $('s-assist').value = al; $('o-assist').textContent = ['Aus', 'Schwach', 'Mittel', 'Stark'][al];
 }
-for (const [id, key, parse] of [['s-sens', 'sens', Number], ['s-fov', 'fov', Number], ['s-vol', 'vol', Number]]) {
+for (const [id, key, parse] of [['s-sens', 'sens', Number], ['s-fov', 'fov', Number], ['s-vol', 'vol', Number], ['s-assist', 'assist', Number]]) {
   $(id).addEventListener('input', () => { game.applySettings({ [key]: parse($(id).value) }); syncSettingsUi(); });
 }
 $('s-invert').addEventListener('change', () => game.applySettings({ invert: $('s-invert').checked }));

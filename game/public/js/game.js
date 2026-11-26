@@ -11,7 +11,7 @@ const SUN_DIR = new THREE.Vector3(-0.55, 0.42, -0.72).normalize();
 const SETTINGS_KEY = 'eclipse-arena-settings';
 
 function loadSettings() {
-  const def = { sens: 1, fov: 85, vol: 0.6, invert: false };
+  const def = { sens: 1, fov: 85, vol: 0.6, invert: false, assist: null };
   try { return { ...def, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch { return def; }
 }
 
@@ -443,7 +443,7 @@ export class Game {
     document.addEventListener('mousemove', (e) => {
       if (!this.locked || this.mode !== 'game') return;
       const zoom = this.camera.fov / this.settings.fov;
-      const k = 0.0022 * this.settings.sens * zoom;
+      const k = 0.0022 * this.settings.sens * zoom * (this.assistSlow || 1);
       this.yaw -= e.movementX * k;
       this.pitch -= e.movementY * k * (this.settings.invert ? -1 : 1);
       this.pitch = Math.max(-1.52, Math.min(1.52, this.pitch));
@@ -524,7 +524,7 @@ export class Game {
       prev.x = t.clientX; prev.y = t.clientY;
       if (!this.alive || this.chatting) return;
       const zoom = this.camera.fov / this.settings.fov;
-      const k = 0.0058 * this.settings.sens * zoom;
+      const k = 0.0058 * this.settings.sens * zoom * (this.assistSlow || 1);
       this.yaw -= dx * k;
       this.pitch -= dy * k * (this.settings.invert ? -1 : 1);
       this.pitch = Math.max(-1.52, Math.min(1.52, this.pitch));
@@ -605,6 +605,56 @@ export class Game {
       case 'chat': if (down) { this.touch.reset(); this.openChat(); } break;
       default: break;
     }
+  }
+
+  // =====================================================================
+  // Zielhilfe (für alle Spieler gleich, im Pausemenü einstellbar)
+  // Stufe 0 = aus, 1 = schwach, 2 = mittel, 3 = stark
+  // =====================================================================
+  assistLevel() {
+    const a = this.settings.assist;
+    return a === null || a === undefined ? (this.touch.on ? 2 : 0) : a;
+  }
+
+  updateAssist(dt, act) {
+    this.assistSlow = 1;
+    this.onTarget = false;
+    const lvl = this.assistLevel();
+    if (!act || !lvl || (this.match && this.match.state !== 'live')) return;
+    const cone = [0, 0.07, 0.11, 0.16][lvl];       // Fangbereich (Bogenmaß)
+    const slow = [0, 0.25, 0.4, 0.55][lvl];        // Abbremsen über dem Gegner
+    const pull = [0, 1.2, 2.6, 4.5][lvl];          // Zug Richtung Gegner (rad/s)
+    const w = this.weapon;
+    const maxD = Math.min(w.range, w.key === 'sniper' ? 160 : 70);
+    const eye = this.camera.position;
+    const o = [eye.x, eye.y, eye.z];
+    let best = null;
+    for (const r of this.remotes.values()) {
+      if (!r.alive || r.prot || !r.av.g.visible) continue;
+      const p = r.av.g.position;
+      const tx = p.x, ty = p.y + 1.25, tz = p.z;
+      const dx = tx - eye.x, dy = ty - eye.y, dz = tz - eye.z;
+      const dist = Math.hypot(dx, dy, dz);
+      if (dist > maxD || dist < 0.5) continue;
+      const ry = Math.atan2(-dx, -dz), rx = Math.atan2(dy, Math.hypot(dx, dz));
+      let ey = ry - this.yaw;
+      while (ey > Math.PI) ey -= Math.PI * 2;
+      while (ey < -Math.PI) ey += Math.PI * 2;
+      const ex = rx - this.pitch;
+      // Auf Entfernung wird der Fangbereich etwas kleiner, aus der Nähe größer
+      const c = cone * Math.min(1.6, Math.max(0.6, 12 / dist));
+      const err = Math.hypot(ey, ex);
+      if (err > c) continue;
+      if (rayMap(o, [dx / dist, dy / dist, dz / dist], dist, BOXES) < dist - 0.4) continue;
+      if (!best || err < best.err) best = { err, ey, ex, c };
+    }
+    if (!best) return;
+    this.onTarget = best.err < best.c * 0.5;
+    this.assistSlow = 1 - slow;
+    const looking = this.firing || Math.hypot(this.body.v[0], this.body.v[2]) > 1 || (this.touch.on && this.touch.look.size > 0);
+    const k = Math.min(1, pull * dt * (looking ? 1 : 0.35) * (this.firing ? 1.4 : 1) / Math.max(best.err, 0.02));
+    this.yaw += best.ey * k;
+    this.pitch = Math.max(-1.52, Math.min(1.52, this.pitch + best.ex * k));
   }
 
   active() { return this.mode === 'game' && (this.locked || this.debugActive || this.touch.on); }
@@ -1012,6 +1062,7 @@ export class Game {
     $('crosshair').style.display = sniperScope ? 'none' : '';
     const moving = Math.hypot(this.body.v[0], this.body.v[2]) > 1.5;
     const spread = (w.spread + (moving ? w.moveSpread : 0) + (this.body.onGround ? 0 : w.airSpread)) * (1 - this.adsK * (1 - w.adsMul));
+    $('crosshair').classList.toggle('target', !!this.onTarget);
     $('crosshair').style.setProperty('--gap', `${Math.round(4 + spread * 380 + this.kick * 200)}px`);
 
     if (!this.hudT || now - this.hudT > 200) {
@@ -1138,6 +1189,7 @@ export class Game {
     if (this.firing && act) this.tryFire(now);
     this.kick *= Math.exp(-dt * 9);
     this.kickYaw *= Math.exp(-dt * 9);
+    this.updateAssist(dt, act);
 
     // Senden
     this.sendAcc += dt;
