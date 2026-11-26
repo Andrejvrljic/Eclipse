@@ -1,0 +1,22 @@
+name: Live-Test ECLIPSE
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy ECLIPSE Dev Platform"]
+    types: [completed]
+
+jobs:
+  smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Zwei Test-Spieler gegen den echten Server
+        env:
+          GAME_URL: ${{ vars.GAME_URL || 'https://spiel.dinnerboneagg.workers.dev' }}
+          DASH_URL: ${{ vars.DASH_URL || 'https://eclipse.dinnerboneagg.workers.dev' }}
+        run: node scripts/smoke.mjs "$GAME_URL" "$DASH_URL"

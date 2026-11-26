@@ -124,3 +124,8 @@ jobs:
           npx wrangler deploy -c game/wrangler.toml
           echo "::notice title=Spiel::https://spiel.$SUBDOMAIN.workers.dev"
           echo "### Spiel: https://spiel.$SUBDOMAIN.workers.dev" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Live-Test (zwei Test-Spieler gegen den echten Server)
+        run: |
+          sleep 8
+          node scripts/smoke.mjs "https://spiel.$SUBDOMAIN.workers.dev" "https://eclipse.$SUBDOMAIN.workers.dev"
