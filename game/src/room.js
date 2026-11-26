@@ -10,6 +10,8 @@ const TICK = 50; // ms → 20 Snapshots pro Sekunde
 const HISTORY = 24; // ~1,2 s Positionsverlauf für den Lag-Ausgleich
 const INTERP = 120; // ms Puffer, mit dem der Browser andere Spieler darstellt
 const BOT_NAMES = ['Nova', 'Orion', 'Vega', 'Lyra', 'Kepler', 'Rigel', 'Atlas', 'Sirius'];
+// Schaden der Bots im Verhältnis zu einem Spieler (0.3 = 6 statt 20 pro Treffer)
+const BOT_DAMAGE = 0.3;
 const BOT_COLORS = ['#94a3b8', '#a8a29e', '#9ca3af', '#a1a1aa'];
 
 const r2 = (n) => Math.round(n * 100) / 100;
@@ -480,7 +482,7 @@ export class GameRoom extends DurableObject {
         const sp = 0.05;
         const d = dirFrom(b.ry + (Math.random() - 0.5) * sp, b.rx + (Math.random() - 0.5) * sp);
         b.w = 0;
-        this.fire(b, 'rifle', eye, [d], now, now, 0.55);
+        this.fire(b, 'rifle', eye, [d], now, now, BOT_DAMAGE);
         if (!b.alive) return;
       }
     } else {
