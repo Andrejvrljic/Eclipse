@@ -63,7 +63,11 @@ body.touch .touchhelp{display:block}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .dot[data-ok="1"]{background:var(--ok);box-shadow:0 0 0 3px rgba(34,197,94,.18)}
 .coin{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fde68a,#d97706)}
-.quests{position:absolute;right:max(12px,env(safe-area-inset-right));top:calc(56px + env(safe-area-inset-top));width:min(260px,40vw);display:flex;flex-direction:column;gap:6px}
+.minimap{position:absolute;right:max(12px,env(safe-area-inset-right));top:calc(56px + env(safe-area-inset-top));width:150px;height:150px;border-radius:14px;border:1px solid var(--line-2);background:#0b0a12;box-shadow:0 6px 24px -10px rgba(0,0,0,.8);cursor:pointer}
+.mapwrap{position:fixed;inset:0;display:grid;place-items:center;background:rgba(5,4,10,.72);z-index:30}
+.mapwrap canvas{border-radius:18px;border:1px solid var(--line-2);box-shadow:0 20px 60px -20px #000}
+.mapwrap .maphint{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);font-size:13px;color:#cbd5e1;background:var(--panel);padding:6px 12px;border-radius:99px}
+.quests{position:absolute;right:max(12px,env(safe-area-inset-right));top:calc(216px + env(safe-area-inset-top));width:min(260px,40vw);display:flex;flex-direction:column;gap:6px}
 .qt{padding:8px 11px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:12px;position:relative}
 .qt b{display:block;font:600 12.5px var(--fd)}
 .qt span{color:var(--muted);display:block;margin-bottom:5px}
@@ -161,6 +165,7 @@ body.touch .help{display:none!important}
 .qp em{font:500 11px var(--fm);font-style:normal;color:var(--muted)}
 .admin section{padding:12px 0;border-top:1px solid var(--line)} .admin section:first-child{border-top:0;padding-top:0}
 .admin h4{margin:0 0 8px;font:600 12px var(--fd);letter-spacing:.14em;text-transform:uppercase;color:#FBBF24}
+.sub{margin:14px 0 8px;font:600 12px var(--fd);letter-spacing:.14em;text-transform:uppercase;color:#FBBF24}
 .admin input[type=number]{width:80px}
 .admin input[type=text]{flex:1;min-width:180px}
 
@@ -178,7 +183,7 @@ body.touch.playing .tbtns{display:flex}
 body.touch.playing .tinv{display:block}
 body.touch .bars{bottom:auto;top:calc(100px + env(safe-area-inset-top))}
 body.touch .hotbar{bottom:calc(10px + env(safe-area-inset-bottom))}
-@media (max-width:760px){.hslot{width:42px;height:42px}.ico{width:28px;height:28px;font-size:10.5px}.grid{grid-template-columns:repeat(4,52px)}.quests{display:none}.bars{width:190px}}
+@media (max-width:760px){.minimap{width:104px;height:104px}.hslot{width:42px;height:42px}.ico{width:28px;height:28px;font-size:10.5px}.grid{grid-template-columns:repeat(4,52px)}.quests{display:none}.bars{width:190px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -209,7 +214,7 @@ body.touch .hotbar{bottom:calc(10px + env(safe-area-inset-bottom))}
       <kbd>Tab</kbd><span>Inventar, Herstellen, Quests</span>
       <kbd>Shift · Leertaste</kbd><span>Sprinten · Springen / Handbremse</span>
       <kbd>E</kbd><span>Einsteigen, Tür, Kreatur füttern / kommandieren</span>
-      <kbd>F · X · R</kbd><span>Reiten · Abreißen · Auto zurücksetzen</span>
+      <kbd>F · X · R</kbd><span>Reiten · Abreißen · Bauteil drehen / Auto zurücksetzen</span>
       <kbd>H</kbd><span>Steuerungshilfe ein/aus</span>
     </div>
     <div class="touchhelp">Links ziehen: laufen. Rechts wischen: umsehen. Knöpfe rechts: Angriff, Springen, Benutzen. Oben links: Inventar.</div>
@@ -220,6 +225,7 @@ body.touch .hotbar{bottom:calc(10px + env(safe-area-inset-bottom))}
 <div class="hud" id="hud" hidden>
   <div class="tl"><span class="chip"><b>ECLIPSE</b></span><span class="chip"><i class="dot" id="net-dot" data-ok="0"></i><span id="online">Offline</span></span><span class="chip adm" id="admin-badge" hidden>ADMIN · P</span></div>
   <div class="tr"><span class="chip"><i class="coin"></i><span class="mono" id="coins">0</span></span></div>
+  <canvas class="minimap" id="minimap" width="150" height="150" title="Karte (M)"></canvas>
   <div class="quests" id="quests"></div>
   <div class="cross"></div>
   <div class="toasts" id="toasts"></div>
@@ -246,8 +252,9 @@ body.touch .hotbar{bottom:calc(10px + env(safe-area-inset-bottom))}
 
 <div class="help" id="help" hidden>
   <b>Steuerung</b> <span class="muted">(H blendet aus/ein)</span>
-  <div class="keys2"><kbd>W A S D</kbd><span>Laufen / Fahren</span><kbd>Maus</kbd><span>Umsehen (ins Bild klicken)</span><kbd>Leertaste</kbd><span>Springen · im Auto: Handbremse</span><kbd>Shift</kbd><span>Sprinten</span><kbd>E</kbd><span>Interagieren: ein-/aussteigen, Tür, füttern</span><kbd>Linksklick</kbd><span>Angreifen, sammeln, bauen</span><kbd>1–8</kbd><span>Schnellleiste</span><kbd>Tab</kbd><span>Inventar, Herstellen, Quests</span><kbd>F · X · R</kbd><span>Reiten · Abreißen · Auto aufstellen</span></div>
+  <div class="keys2"><kbd>W A S D</kbd><span>Laufen / Fahren</span><kbd>Maus</kbd><span>Umsehen (ins Bild klicken)</span><kbd>Leertaste</kbd><span>Springen · im Auto: Handbremse</span><kbd>Shift</kbd><span>Sprinten</span><kbd>E</kbd><span>Interagieren: ein-/aussteigen, Tür, Truhe, füttern</span><kbd>Linksklick</kbd><span>Angreifen, sammeln, bauen</span><kbd>1–8</kbd><span>Schnellleiste</span><kbd>Tab</kbd><span>Inventar, Herstellen, Quests</span><kbd>F · X · R</kbd><span>Reiten · Abreißen · Bauteil drehen / Auto aufstellen</span><kbd>M</kbd><span>Inselkarte</span></div>
 </div>
+<div class="mapwrap" id="mapwrap" hidden><canvas id="bigmap"></canvas><span class="maphint">Inselkarte · M oder Tippen schließt</span></div>
 <div class="pause" id="pause" hidden><div class="card"><h2>Pause</h2><p>Klicke, um weiterzuspielen. Tab öffnet das Inventar.</p></div></div>
 <div class="death" id="death" hidden><div class="card"><h2>Du bist gestorben</h2><p id="death-by"></p><button class="play" id="respawn">Wiederbeleben</button></div></div>
 

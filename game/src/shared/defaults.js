@@ -8,7 +8,15 @@ export const STRUCTURE_TYPES = {
   decke: { name: 'Decke', w: 3, h: 0.25, d: 3 },
   lagerfeuer: { name: 'Lagerfeuer', w: 1.2, h: 0.6, d: 1.2 },
   schlafsack: { name: 'Schlafsack', w: 1, h: 0.2, d: 2 },
+  treppe: { name: 'Treppe', w: 3, h: 3, d: 3 },
+  fensterwand: { name: 'Fensterwand', w: 3, h: 3, d: 0.25 },
+  zaun: { name: 'Zaun', w: 3, h: 1.2, d: 0.15 },
+  dach: { name: 'Schrägdach', w: 3, h: 1.5, d: 3 },
+  truhe: { name: 'Lagertruhe', w: 1.1, h: 0.8, d: 0.7 },
 };
+
+/** Plätze in einer Lagertruhe. */
+export const CHEST_SLOTS = 16;
 
 export const ITEM_TYPES = ['Rohstoff', 'Nahrung', 'Werkzeug', 'Waffe', 'Rüstung', 'Bauteil', 'Besonderes'];
 export const BEHAVIORS = ['Fliehend', 'Neutral', 'Aggressiv'];
@@ -38,6 +46,9 @@ export const VEHICLE_TYPES = {
   gelaendewagen: { name: 'Geländewagen' },
   quad: { name: 'Quad' },
   truck: { name: 'Truck' },
+  sportwagen: { name: 'Sportwagen' },
+  buggy: { name: 'Buggy' },
+  pickup: { name: 'Pickup' },
 };
 
 // id → Fahrzeug in der Welt (Position wird vom Spiel fortlaufend gespeichert)
@@ -52,6 +63,25 @@ export const DEFAULT_VEHICLES = {
   v8: { type: 'truck', color: '#A78BFA', x: 60, z: -260, ry: -0.6, order: 8 },
   v9: { type: 'gelaendewagen', color: '#FBBF24', x: -150, z: -210, ry: 2.6, order: 9 },
   v10: { type: 'quad', color: '#F87171', x: 260, z: -60, ry: -2.0, order: 10 },
+  // Parkplatz am Startplatz
+  v11: { type: 'sportwagen', color: '#EF4444', x: -22, z: -16, ry: 0.8, order: 11 },
+  v12: { type: 'buggy', color: '#22C55E', x: -17, z: -20, ry: 0.8, order: 12 },
+  v13: { type: 'pickup', color: '#0EA5E9', x: -12, z: -24, ry: 0.8, order: 13 },
+  v14: { type: 'sportwagen', color: '#FBBF24', x: 24, z: 6, ry: -1.6, order: 14 },
+  v15: { type: 'buggy', color: '#F472B6', x: 22, z: 14, ry: -2.0, order: 15 },
+  v16: { type: 'pickup', color: '#A78BFA', x: 25, z: -3, ry: -1.4, order: 16 },
+  // an der Rennstrecke
+  v17: { type: 'sportwagen', color: '#38BDF8', x: 98, z: 30, ry: 1.9, order: 17 },
+  v18: { type: 'sportwagen', color: '#F97316', x: 96, z: 24, ry: 1.9, order: 18 },
+  // über die Insel verteilt
+  v19: { type: 'buggy', color: '#FACC15', x: 186, z: 235, ry: 0.5, order: 19 },
+  v20: { type: 'pickup', color: '#14B8A6', x: 13, z: 300, ry: 2.4, order: 20 },
+  v21: { type: 'sportwagen', color: '#E11D48', x: -166, z: 250, ry: -0.7, order: 21 },
+  v22: { type: 'buggy', color: '#84CC16', x: -281, z: 105, ry: 1.2, order: 22 },
+  v23: { type: 'pickup', color: '#6366F1', x: -289, z: -81, ry: -2.2, order: 23 },
+  v24: { type: 'gelaendewagen', color: '#10B981', x: -11, z: -270, ry: 0.3, order: 24 },
+  v25: { type: 'buggy', color: '#FB7185', x: 166, z: -250, ry: -1.0, order: 25 },
+  v26: { type: 'sportwagen', color: '#C084FC', x: 289, z: 81, ry: 2.8, order: 26 },
 };
 
 // id → Gegenstand
@@ -76,6 +106,11 @@ export const DEFAULT_ITEMS = {
   decke: { name: 'Decke', type: 'Bauteil', color: '#DDB892', stack: 20, structure: 'decke', order: 23 },
   lagerfeuer: { name: 'Lagerfeuer', type: 'Bauteil', color: '#F59E0B', stack: 5, structure: 'lagerfeuer', order: 24 },
   schlafsack: { name: 'Schlafsack', type: 'Bauteil', color: '#38BDF8', stack: 5, structure: 'schlafsack', order: 25 },
+  treppe: { name: 'Treppe', type: 'Bauteil', color: '#B5835A', stack: 10, structure: 'treppe', order: 26 },
+  fensterwand: { name: 'Fensterwand', type: 'Bauteil', color: '#A9785A', stack: 20, structure: 'fensterwand', order: 27 },
+  zaun: { name: 'Zaun', type: 'Bauteil', color: '#8D6E53', stack: 30, structure: 'zaun', order: 28 },
+  dach: { name: 'Schrägdach', type: 'Bauteil', color: '#7A4B3A', stack: 20, structure: 'dach', order: 29 },
+  truhe: { name: 'Lagertruhe', type: 'Bauteil', color: '#A16207', stack: 5, structure: 'truhe', order: 30 },
 };
 
 // id → Rezept: Ergebnis, Menge, Zutaten { itemId: anzahl }, Mindestlevel, Station (leer oder "lagerfeuer")
@@ -94,6 +129,11 @@ export const DEFAULT_RECIPES = {
   r_decke: { item: 'decke', amount: 1, ingredients: { holz: 6, stein: 2 }, level: 3, station: '', order: 13 },
   r_lagerfeuer: { item: 'lagerfeuer', amount: 1, ingredients: { holz: 5, stein: 5 }, level: 1, station: '', order: 14 },
   r_schlafsack: { item: 'schlafsack', amount: 1, ingredients: { haut: 4, holz: 2 }, level: 2, station: '', order: 15 },
+  r_zaun: { item: 'zaun', amount: 2, ingredients: { holz: 4 }, level: 1, station: '', order: 16 },
+  r_truhe: { item: 'truhe', amount: 1, ingredients: { holz: 12, stein: 2 }, level: 2, station: '', order: 17 },
+  r_fensterwand: { item: 'fensterwand', amount: 1, ingredients: { holz: 6, stein: 1 }, level: 3, station: '', order: 18 },
+  r_treppe: { item: 'treppe', amount: 1, ingredients: { holz: 10, stein: 2 }, level: 3, station: '', order: 19 },
+  r_dach: { item: 'dach', amount: 1, ingredients: { holz: 7, haut: 1 }, level: 4, station: '', order: 20 },
 };
 
 // id → Kreaturenart (eigene Fantasie-Arten)
@@ -130,6 +170,8 @@ export const DEFAULT_QUESTS = {
   q_splitter: { title: 'Splittersucher', description: 'Sammle fünf Eclipse-Splitter.', type: 'Sammeln', target: 'splitter', count: 5, xp: 200, coins: 50, reward_item: '', reward_amount: 0, order: 6 },
   q_zaehmen: { title: 'Zähmer', description: 'Zähme eine Kreatur, indem du sie fütterst.', type: 'Zähmen', target: '', count: 1, xp: 250, coins: 40, reward_item: '', reward_amount: 0, order: 7 },
   q_level: { title: 'Überlebender', description: 'Erreiche Level 10.', type: 'Level erreichen', target: '', count: 10, xp: 300, coins: 60, reward_item: '', reward_amount: 0, order: 8 },
+  q_truhe: { title: 'Sicheres Lager', description: 'Baue eine Lagertruhe für deine Vorräte.', type: 'Bauen', target: 'truhe', count: 1, xp: 100, coins: 20, reward_item: '', reward_amount: 0, order: 10 },
+  q_obergeschoss: { title: 'Hoch hinaus', description: 'Baue eine Treppe in dein Haus.', type: 'Bauen', target: 'treppe', count: 1, xp: 150, coins: 25, reward_item: '', reward_amount: 0, order: 11 },
   q_koloss: { title: 'Der Koloss', description: 'Besiege einen Schattenkoloss.', type: 'Besiegen', target: 'schattenkoloss', count: 1, xp: 800, coins: 200, reward_item: 'splitter', reward_amount: 5, order: 9 },
 };
 
@@ -151,3 +193,10 @@ export const maxHp = (level) => 100 + (level - 1) * 10;
 export const maxStamina = (level) => 100 + (level - 1) * 5;
 export const INV_SLOTS = 32;
 export const HOTBAR = 8;
+
+/** Inhalte, die nach dem ersten Start dazugekommen sind (werden in bestehende Welten nachgetragen). */
+export const CONTENT_VERSION = 3;
+export const CONTENT_ADDED = {
+  2: { items: ['treppe', 'fensterwand', 'zaun', 'dach', 'truhe'], recipes: ['r_zaun', 'r_truhe', 'r_fensterwand', 'r_treppe', 'r_dach'], quests: ['q_truhe', 'q_obergeschoss'] },
+  3: { vehicles: ['v11', 'v12', 'v13', 'v14', 'v15', 'v16', 'v17', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24', 'v25', 'v26'] },
+};

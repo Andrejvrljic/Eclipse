@@ -12,6 +12,7 @@ import { createState } from './state.js';
 import { createUI } from './ui.js';
 import { createAtmosphere } from './atmosphere.js';
 import { createActivities } from './activities.js';
+import { createMap } from './map.js';
 import { SPAWN, SEA_LEVEL, findLand } from './terrain.js';
 import { setHeld, swingFigure } from './models.js';
 import * as D from './shared/defaults.js';
@@ -25,11 +26,12 @@ const COLORS = ['#A78BFA', '#38BDF8', '#22C55E', '#F59E0B', '#F472B6', '#EF4444'
 const DT = 1 / 60;
 const FIST = { name: 'Faust', damage: 6 };
 
-let renderer, scene, camera, physics, world, player, vehicles, creatures, buildings, input, net, state, ui, atmos, acts;
+let renderer, scene, camera, physics, world, player, vehicles, creatures, buildings, input, net, state, ui, atmos, acts, map, headlight;
 let config = { settings: D.DEFAULT_SETTINGS, items: D.DEFAULT_ITEMS, recipes: D.DEFAULT_RECIPES, species: D.DEFAULT_SPECIES, quests: D.DEFAULT_QUESTS };
 let playing = false, joined = false, dead = false, admin = false, god = false;
 let driving = null, pendingEnter = null, riding = null, ridePose = null;
 let yaw = Math.PI * 0.15, pitch = 0.3, pendingJump = false, selSlot = 0, stamina = 100;
+let buildRot = 0, freeBuild = false, chest = null;
 let attackCd = 0, swingT = 0, lastSave = 0, lastVSend = 0, lastRideSend = 0, damageFlash = 0, knockCd = 0;
 const projectiles = [];
 const depleted = new Map(); // Rohstoffquelle → { hits, until }
@@ -108,6 +110,9 @@ async function boot() {
   world.findLand = (x, z) => findLand(world.heightAt, x, z);
   if (touch) { world.sun.shadow.mapSize.set(1024, 1024); renderer.shadowMap.type = THREE.BasicShadowMap; }
   atmos = createAtmosphere(scene, world, { lowEnd: touch });
+  map = createMap(world, { mini: $('minimap'), big: $('bigmap'), bigWrap: $('mapwrap') });
+  // Scheinwerfer für das eigene Fahrzeug (nur bei Dunkelheit an)
+  headlight = new THREE.SpotLight(0xfff1d6, 0, 70, 0.5, 0.45, 1.2); headlight.visible = false; scene.add(headlight, headlight.target);
   vehicles = createVehicles(RAPIER, physics, scene, world);
   creatures = createCreatures(scene, getConfig);
   buildings = createBuildings(RAPIER, physics, scene, world);
@@ -121,13 +126,16 @@ async function boot() {
   });
   ui = createUI({
     state, getConfig, nearStation: (type) => buildings.nearStation(player.feet(tmp), type),
-    isAdmin: () => admin, adminState: () => ({ fly: player?.flying, god }),
+    isAdmin: () => admin, adminState: () => ({ fly: player?.flying, god, freeBuild }),
+    chest: () => chest,
+    onChestPut: (i) => { const s = state.profile.inv[i]; if (s && chest) net.send({ t: 'chestput', id: chest.id, item: s.id, n: s.n }); },
+    onChestTake: (i) => { if (chest && chest.inv[i]) net.send({ t: 'chesttake', id: chest.id, slot: i }); },
     getPlayers: () => [...net.remotes.values()].map((r) => ({ id: r.id, name: r.name })),
     onSlot: (i) => { selSlot = i; },
     onCraft: (rid) => { const r = state.craft(rid, (type) => buildings.nearStation(player.feet(tmp), type)); if (r.ok) ui.toast(`${state.def(config.recipes[rid].item)?.name} hergestellt`); else ui.toast(r.why, 'warn'); },
     onAdmin: adminOp,
     onRespawn: respawn,
-    onPanel: (open) => { if (open) document.exitPointerLock?.(); input.clear(); },
+    onPanel: (open) => { if (open) document.exitPointerLock?.(); else chest = null; input.clear(); },
     onAte: () => ui.toast('Mahlzeit!'),
   });
   ui.bind();
@@ -147,6 +155,8 @@ async function boot() {
       if (!joined) return;
       if (k === 'inventory') ui.toggle('inv');
       else if (k === 'admin' && admin) ui.toggle('admin');
+      else if (k === 'escape' && map.open) map.toggle(false);
+      else if (k === 'map') { map.toggle(); if (map.open) document.exitPointerLock?.(); }
       else if (k === 'escape' && ui.open) ui.close();
       else if (k === 'help') $('help').hidden = !$('help').hidden;
     },
@@ -154,6 +164,8 @@ async function boot() {
     onScroll: (d) => { selSlot = (selSlot + d + D.HOTBAR) % D.HOTBAR; },
   });
   $('pause').addEventListener('click', () => canvas.requestPointerLock?.()?.catch?.(() => {}));
+  $('minimap').addEventListener('click', () => { map.toggle(true); document.exitPointerLock?.(); });
+  $('mapwrap').addEventListener('click', () => { map.toggle(false); if (!input.state.touch) canvas.requestPointerLock?.()?.catch?.(() => {}); });
   $('loading').textContent = '';
   $('play').disabled = false; $('play').textContent = 'Spielen';
   requestAnimationFrame(frame);
@@ -228,6 +240,17 @@ function onServer(m) {
       break;
     case 'config': config = m.config; atmos.apply(config.settings); creatures.clear(); ui.render(); break;
     case 'ev': acts.setEvent(m.ev, m); break;
+    case 'chest': {
+      if (m.put && m.put.n > 0) state.remove(m.put.item, m.put.n);
+      if (m.took && m.took.n > 0) {
+        const left = state.add(m.took.item, m.took.n, { silent: true });
+        if (left > 0) { net.send({ t: 'chestput', id: m.id, item: m.took.item, n: left }); ui.toast('Dein Inventar ist voll.', 'warn'); }
+      }
+      if (m.full) ui.toast('Die Truhe ist voll.', 'warn');
+      chest = { id: m.id, inv: m.inv, owner: m.owner };
+      if (!ui.open) ui.toggle('chest'); else ui.render();
+      break;
+    }
     case 'reward': {
       state.addXp(m.xp || 0); state.profile.coins += m.coins || 0; state.markDirty();
       ui.toast(`${m.text || 'Belohnung'} · +${m.xp} EP · +${m.coins} Münzen`, 'item');
@@ -358,6 +381,7 @@ function adminOp(op, a) {
   switch (op) {
     case 'fly': player.flying = !player.flying; ui.toast(player.flying ? 'Fliegen an' : 'Fliegen aus'); break;
     case 'god': god = !god; ui.toast(god ? 'Unverwundbar an' : 'Unverwundbar aus'); break;
+    case 'freebuild': freeBuild = !freeBuild; ui.toast(freeBuild ? 'Kostenlos bauen an (Bauteile werden nicht verbraucht)' : 'Kostenlos bauen aus'); break;
     case 'heal-me': state.profile.hp = state.maxHp; state.profile.hunger = 100; stamina = state.maxStamina; break;
     case 'spawn-tp': { const sp = spawnPoint(2); player.teleport(sp.x, world.heightAt(sp.x, sp.z), sp.z); break; }
     case 'give-me': state.add(a.item, a.itemN, { silent: false }); break;
@@ -385,10 +409,10 @@ function useHeld() {
   const dir = aimDir(tmp2);
   // Bauen
   if (d && d.structure) {
-    const pl = buildings.preview(d.structure, feet, yaw);
-    if (!pl || !pl.valid) { ui.toast('Hier kann nicht gebaut werden.', 'warn'); return; }
+    const pl = buildings.preview(d.structure, feet, yaw, buildRot);
+    if (!pl || !pl.valid) { ui.toast(d.structure === 'decke' || d.structure === 'dach' ? 'Decke und Dach brauchen Wände darunter.' : 'Hier kann nicht gebaut werden.', 'warn'); return; }
     net.send({ t: 'build', type: d.structure, x: pl.x, y: pl.y, z: pl.z, ry: pl.ry });
-    state.removeSlot(selSlot, 1);
+    if (!(admin && freeBuild)) state.removeSlot(selSlot, 1);
     state.profile.stats.built++;
     state.progress('Bauen', d.structure, 1);
     state.addXp(4);
@@ -450,6 +474,7 @@ function interact() {
   // Tür
   const b = buildings.pick(feet, yaw, 3.5);
   if (b && b.b.type === 'wand_tuer') { net.send({ t: 'door', id: b.b.id, open: !b.open }); return; }
+  if (b && b.b.type === 'truhe') { net.send({ t: 'chest', id: b.b.id }); return; }
   // Truhen und Event-Schatz
   if (acts.interact(feet)) return;
   // Fahrzeug
@@ -534,6 +559,7 @@ function frame(now) {
       if (riding) stopRide();
       else if (!driving) { const c = creatures.pick(player.feet(tmp), aimDir(tmp2), 5, (x) => x.mine); if (c) { if (c.def.rideable) net.send({ t: 'ride', id: c.id }); else ui.toast(`${c.def.name} kann man nicht reiten.`, 'warn'); } }
     }
+    if (inp.reset && !driving && heldDef()?.def?.structure) { buildRot = (buildRot + 1) % 4; }
     if (inp.reset && driving) vehicles.reset(driving, world.heightAt(vehicles.position(driving).x, vehicles.position(driving).z) < 0.5);
     if (inp.demolish && !driving && !riding) { const b = buildings.pick(player.feet(tmp), yaw, 4.5); if (b) net.send({ t: 'demolish', id: b.b.id }); }
     if ((inp.attack || (inp.attackHeld && attackCd <= 0 && !(heldDef()?.def?.structure))) && !driving && !riding && !player.tumbling) useHeld();
@@ -616,7 +642,9 @@ function frame(now) {
   creatures.update(dt, camera, riding && riding.id, ridePose);
   buildings.update(t);
   const bp = heldDef()?.def?.structure;
-  buildings.preview(!blocked && !driving && !riding && bp ? bp : '', player.feet(tmp), yaw);
+  buildings.preview(!blocked && !driving && !riding && bp ? bp : '', player.feet(tmp), yaw, buildRot);
+  // Truhe zu weit weg → schließen
+  if (chest && ui.open) { const e = buildings.map.get(chest.id); const f = player.feet(tmp); if (!e || Math.hypot(e.b.x - f.x, e.b.z - f.z) > 7) ui.close(); }
 
   // Pfeile
   for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -679,6 +707,27 @@ function frame(now) {
   ui.bars(stamina, state.maxStamina);
   ui.hotbar(selSlot);
   if (Math.floor(t * 2) !== frame._q) { frame._q = Math.floor(t * 2); ui.tracker(); if (ui.open) ui.render(); }
+  // Karte (5 × pro Sekunde)
+  if (Math.floor(t * 5) !== frame._m) {
+    frame._m = Math.floor(t * 5);
+    const me = driving ? vehicles.position(driving) : riding && ridePose ? ridePose.p : player.feet(tmp2);
+    const ev = acts.event;
+    map.update({
+      me: { x: me.x, z: me.z, yaw }, spawn: spawnPoint(0),
+      players: [...net.remotes.values()].filter((r) => r.has).map((r) => ({ x: r.pos.x, z: r.pos.z, color: r.color || '#fff', name: r.name })),
+      vehicles: [...vehicles.list.values()].map((e) => { const p = vehicles.position(e); return { x: p.x, z: p.z, color: e.color, busy: !!e.driver }; }),
+      treasure: ev && ev.type === 'schatz' && ev.chest ? { x: ev.chest[0], z: ev.chest[2] } : null,
+      parcours: acts.platforms[0], race: acts.checkpoints,
+    });
+  }
+  // Scheinwerfer bei Dunkelheit
+  const dark = atmos.dark && driving;
+  headlight.visible = !!dark;
+  if (dark) {
+    const p = vehicles.position(driving), f = vehicles.forward(driving, tmp);
+    headlight.intensity = 60; headlight.position.set(p.x + f.x * (driving.spec.half[0] + 0.2), p.y + 0.6, p.z + f.z * (driving.spec.half[0] + 0.2));
+    headlight.target.position.set(p.x + f.x * 30, p.y - 2, p.z + f.z * 30); headlight.target.updateMatrixWorld();
+  }
   const touch = inp.touch;
   let prompt = '';
   if (dead) prompt = '';
@@ -689,7 +738,8 @@ function frame(now) {
     const v = vehicles.nearest(f, 4.5);
     const c = creatures.pick(f, aimDir(new THREE.Vector3()), 5);
     const b = buildings.pick(f, yaw, 3.5);
-    if (bp) prompt = touch ? 'Angriff-Knopf: bauen' : 'Klick: bauen  ·  X: eigenes Bauteil abreißen';
+    if (bp) prompt = touch ? 'Angriff-Knopf: bauen  ·  Drehen-Knopf: drehen' : 'Klick: bauen  ·  R: drehen  ·  X: eigenes Bauteil abreißen';
+    else if (b && b.b.type === 'truhe') prompt = (touch ? 'Benutzen: ' : 'E ') + 'Truhe öffnen' + (b.b.ownerName ? ` (${b.b.ownerName})` : '');
     else if (acts.prompt(f, touch)) prompt = acts.prompt(f, touch);
     else if (b && b.b.type === 'wand_tuer') prompt = (touch ? 'Benutzen: ' : 'E ') + (b.open ? 'Tür schließen' : 'Tür öffnen');
     else if (v) prompt = v.driver ? 'Fahrzeug ist besetzt' : (touch ? 'Benutzen: Einsteigen' : `E Einsteigen (${D.VEHICLE_TYPES[v.type]?.name || 'Fahrzeug'})`);
@@ -702,7 +752,8 @@ function frame(now) {
   if (driving) $('kmh').textContent = String(Math.round(Math.abs(vehicles.speed(driving)) * 3.6));
   $('btn-use').textContent = driving ? 'Aussteigen' : 'Benutzen';
   $('btn-jump').textContent = driving ? 'Bremse' : 'Springen';
-  $('btn-reset').hidden = !driving;
+  $('btn-reset').hidden = !driving && !bp;
+  $('btn-reset').textContent = driving ? 'Zurücksetzen' : 'Drehen';
   $('btn-ride').hidden = !(riding || creatures.pick(player.feet(tmp), aimDir(tmp2), 5, (x) => x.mine && x.def.rideable));
   damageFlash = Math.max(0, damageFlash - dt * 2.5);
   $('flash').style.opacity = String(damageFlash * 0.5);

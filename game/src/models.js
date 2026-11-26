@@ -100,6 +100,9 @@ export function setHeld(fig, itemId, def) {
 export const VEHICLE_SPECS = {
   gelaendewagen: { half: [1.9, 0.35, 0.95], density: 90, wheels: [[1.3, 0.85], [1.3, -0.85], [-1.3, 0.85], [-1.3, -0.85]], radius: 0.42, rest: 0.45, connY: -0.15, engine: 1500, maxFwd: 27, maxRev: 9, steer: 0.5, seat: [-0.35, 0.9, 0.35], cam: 9.5 },
   quad: { half: [1.0, 0.3, 0.6], density: 70, wheels: [[0.75, 0.6], [0.75, -0.6], [-0.75, 0.6], [-0.75, -0.6]], radius: 0.34, rest: 0.35, connY: -0.1, engine: 520, maxFwd: 31, maxRev: 7, steer: 0.6, seat: [-0.25, 0.75, 0], cam: 7 },
+  sportwagen: { half: [2.1, 0.28, 0.95], density: 85, wheels: [[1.35, 0.85], [1.35, -0.85], [-1.35, 0.85], [-1.35, -0.85]], radius: 0.36, rest: 0.3, connY: -0.1, engine: 1900, maxFwd: 42, maxRev: 10, steer: 0.42, seat: [-0.3, 0.55, 0.35], cam: 9 },
+  buggy: { half: [1.5, 0.3, 0.85], density: 70, wheels: [[1.05, 0.85], [1.05, -0.85], [-1.0, 0.85], [-1.0, -0.85]], radius: 0.5, rest: 0.55, connY: -0.1, engine: 900, maxFwd: 30, maxRev: 8, steer: 0.55, seat: [-0.2, 0.75, 0], cam: 8 },
+  pickup: { half: [2.3, 0.4, 1.0], density: 85, wheels: [[1.5, 0.9], [1.5, -0.9], [-1.5, 0.9], [-1.5, -0.9]], radius: 0.46, rest: 0.45, connY: -0.2, engine: 2300, maxFwd: 26, maxRev: 8, steer: 0.46, seat: [0.25, 1.05, 0.4], cam: 10 },
   truck: { half: [2.9, 0.55, 1.2], density: 80, wheels: [[2.0, 1.1], [2.0, -1.1], [-1.9, 1.1], [-1.9, -1.1]], radius: 0.6, rest: 0.55, connY: -0.35, engine: 5200, maxFwd: 21, maxRev: 7, steer: 0.42, seat: [1.6, 1.6, 0.45], cam: 13 },
 };
 
@@ -132,6 +135,32 @@ export function makeVehicle(type, color) {
     add(new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.8, hz * 2), paint), -0.95, 0.55, 0);
     add(new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.1, hz * 1.8), frame), -0.95, 0.95, 0);
     for (const z of [-0.8, 0.8]) { add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.36), light), 2.76, 0.45, z); add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.16, 0.34), tail), -2.76, 0.45, z); }
+  } else if (type === 'sportwagen') {
+    const glass = mat('#141a26', { roughness: 0.1, metalness: 0.9 });
+    add(new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.4, 1.85), paint), 0, 0.05, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.12, 1.7), paint), 1.35, 0.3, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.36, 1.5), glass), -0.35, 0.43, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.08, 1.45), paint), -0.4, 0.64, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 1.8), frame), -2.0, 0.62, 0);
+    for (const z of [-0.7, 0.7]) { bar(-1.95, 0.25, z, -2.0, 0.6, z, 0.035); add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.4), light), 2.11, 0.15, z * 0.95); add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.42), tail), -2.11, 0.2, z * 0.95); }
+  } else if (type === 'buggy') {
+    add(new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.22, 1.2), frame), 0, 0.0, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 1.1), paint), 0.95, 0.2, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.55), paint), -0.25, 0.35, 0);
+    for (const z of [-0.55, 0.55]) { bar(0.5, 0.1, z, 0.1, 1.25, z); bar(-0.9, 0.1, z, -0.6, 1.25, z); bar(0.1, 1.25, z, -0.6, 1.25, z); bar(0.5, 0.1, z, 1.4, 0.2, z * 1.4, 0.04); bar(-0.9, 0.1, z, -1.35, 0.2, z * 1.4, 0.04); }
+    bar(0.1, 1.25, -0.55, 0.1, 1.25, 0.55); bar(-0.6, 1.25, -0.55, -0.6, 1.25, 0.55);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.9), frame), -1.2, 0.35, 0);
+    for (const z of [-0.35, 0.35]) add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.16), light), 1.46, 0.3, z);
+  } else if (type === 'pickup') {
+    const glass = mat('#1d2738', { roughness: 0.1, metalness: 0.8 });
+    add(new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.55, 1.95), paint), 0, 0.12, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.85, 1.85), paint), 0.35, 0.8, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 1.6), glass), 1.21, 0.9, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 1.9), glass), 0.35, 0.95, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 1.9), paint), 0.35, 1.25, 0);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.45, 0.08), paint), -1.35, 0.62, 0.93); add(new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.45, 0.08), paint), -1.35, 0.62, -0.93);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 1.9), paint), -2.26, 0.62, 0);
+    for (const z of [-0.7, 0.7]) { add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, 0.34), light), 2.31, 0.3, z); add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, 0.3), tail), -2.31, 0.5, z); }
   } else {
     add(new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.5, 1.8), paint), 0, 0.1, 0);
     add(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.22, 1.6), paint), 1.15, 0.45, 0);
@@ -235,19 +264,24 @@ export function animateCreature(m, moving, dt, attack) {
 const woodMat = new THREE.MeshStandardMaterial({ color: 0x9c6a43, roughness: 0.85 });
 const woodDark = new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 0.9 });
 const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8a8794, roughness: 0.95, flatShading: true });
+const stoneDark = new THREE.MeshStandardMaterial({ color: 0x5f5b68, roughness: 1, flatShading: true });
+const roofMat = new THREE.MeshStandardMaterial({ color: 0x7a3f2f, roughness: 0.8, flatShading: true });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.4, metalness: 0.6 });
+const glassMat = new THREE.MeshStandardMaterial({ color: 0xa5d8ff, transparent: true, opacity: 0.28, roughness: 0.1, side: THREE.DoubleSide, depthWrite: false });
 
 /** Liefert Mesh-Gruppe und Kollisionsquader [hx, hy, hz, ox, oy, oz] (lokal, vor Drehung). */
 export function makeStructure(type) {
   const g = new THREE.Group();
   const boxes = [];
-  const box = (w, h, d, x, y, z, m = woodMat, collide = true) => {
-    const mesh = shadow(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m)); mesh.position.set(x, y, z); g.add(mesh);
-    if (collide) boxes.push([w / 2, h / 2, d / 2, x, y, z]);
+  const box = (w, h, d, x, y, z, m = woodMat, collide = true, rx = 0) => {
+    const mesh = shadow(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m)); mesh.position.set(x, y, z); mesh.rotation.x = rx; g.add(mesh);
+    if (collide) boxes.push([w / 2, h / 2, d / 2, x, y, z, rx]);
     return mesh;
   };
   let door = null;
   switch (type) {
-    case 'fundament': box(3, 0.4, 3, 0, 0.2, 0, stoneMat); break;
+    // Steinsockel nach unten, damit Fundamente am Hang nicht schweben (nur Optik)
+    case 'fundament': box(3, 0.4, 3, 0, 0.2, 0, stoneMat); box(2.9, 2.4, 2.9, 0, -1.2, 0, stoneDark, false); break;
     case 'wand': box(3, 3, 0.25, 0, 1.5, 0); for (const x of [-1.45, 1.45]) box(0.12, 3, 0.3, x, 1.5, 0, woodDark, false); break;
     case 'wand_tuer':
       box(0.9, 3, 0.25, -1.05, 1.5, 0); box(0.9, 3, 0.25, 1.05, 1.5, 0); box(1.2, 0.6, 0.25, 0, 2.7, 0);
@@ -256,6 +290,36 @@ export function makeStructure(type) {
       g.add(door);
       break;
     case 'decke': box(3, 0.25, 3, 0, 0.125, 0, woodMat); break;
+    case 'fensterwand':
+      box(0.9, 3, 0.25, -1.05, 1.5, 0); box(0.9, 3, 0.25, 1.05, 1.5, 0); box(1.2, 1.1, 0.25, 0, 0.55, 0); box(1.2, 0.6, 0.25, 0, 2.7, 0);
+      box(1.3, 0.1, 0.4, 0, 1.12, 0, woodDark, false);
+      { const gl = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.3), glassMat); gl.position.set(0, 1.75, 0); g.add(gl); }
+      break;
+    case 'zaun':
+      for (const x of [-1.4, 0, 1.4]) box(0.16, 1.3, 0.16, x, 0.65, 0, woodDark, false);
+      box(3, 0.12, 0.08, 0, 0.45, 0, woodMat, false); box(3, 0.12, 0.08, 0, 1.0, 0, woodMat, false);
+      boxes.push([1.5, 0.65, 0.1, 0, 0.65, 0]);
+      break;
+    case 'treppe': {
+      // 8 Stufen à 37,5 cm, steigt in lokaler +z-Richtung um 3 m
+      const n = 8, st = 3 / n;
+      for (let i = 0; i < n; i++) box(2.6, st * (i + 1), st, 0, (st * (i + 1)) / 2, -1.5 + st * (i + 0.5), i % 2 ? woodMat : woodDark);
+      for (const x of [-1.35, 1.35]) box(0.1, 0.1, 4.25, x, 2.1, 0, woodDark, false, -Math.PI / 4);
+      break;
+    }
+    case 'dach': {
+      // Schräge 1,5 m auf 3 m, steigt in lokaler +z-Richtung
+      const a = Math.atan2(1.5, 3), len = Math.hypot(3, 1.5);
+      box(3.2, 0.2, len, 0, 0.75, 0, roofMat, true, -a);
+      box(3.2, 0.25, 0.25, 0, 1.55, 1.5, woodDark, false);
+      break;
+    }
+    case 'truhe': {
+      box(1.1, 0.55, 0.7, 0, 0.275, 0, woodMat, false); box(1.15, 0.22, 0.75, 0, 0.66, 0, woodDark, false);
+      box(0.12, 0.8, 0.78, -0.3, 0.4, 0, metalMat, false); box(0.12, 0.8, 0.78, 0.3, 0.4, 0, metalMat, false);
+      boxes.push([0.55, 0.4, 0.37, 0, 0.4, 0]);
+      break;
+    }
     case 'lagerfeuer': {
       for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; const s = box(0.16, 0.16, 0.7, Math.cos(a) * 0.45, 0.08, Math.sin(a) * 0.45, stoneMat, false); s.rotation.y = -a; }
       for (let i = 0; i < 3; i++) { const l = box(0.12, 0.12, 0.9, 0, 0.15, 0, woodDark, false); l.rotation.set(0.35, (i / 3) * Math.PI, 0); }

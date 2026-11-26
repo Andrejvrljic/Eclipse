@@ -45,9 +45,24 @@ export class Room {
   /* ---------- Laden & Speichern ---------- */
   async seed(db) {
     const s = await getDoc(db, C.settings, 'main');
-    if (s) return;
+    if (s) {
+      // Neue Inhalte in bestehende Welten nachtragen – nur, was es noch nicht gibt (Änderungen aus dem Dashboard bleiben)
+      const cv = Number(s.content_version) || 1;
+      if (cv < D.CONTENT_VERSION) {
+        for (let v = cv + 1; v <= D.CONTENT_VERSION; v++) {
+          const add = D.CONTENT_ADDED[v]; if (!add) continue;
+          for (const id of add.items || []) if (!(await getDoc(db, C.items, id))) await putDoc(db, C.items, id, D.DEFAULT_ITEMS[id]);
+          for (const id of add.recipes || []) if (!(await getDoc(db, C.recipes, id))) await putDoc(db, C.recipes, id, D.DEFAULT_RECIPES[id]);
+          for (const id of add.quests || []) if (!(await getDoc(db, C.quests, id))) await putDoc(db, C.quests, id, D.DEFAULT_QUESTS[id]);
+          for (const id of add.vehicles || []) if (!(await getDoc(db, C.vehicles, id))) await putDoc(db, C.vehicles, id, D.DEFAULT_VEHICLES[id]);
+        }
+        await patchDoc(db, C.settings, 'main', { content_version: D.CONTENT_VERSION, version: (Number(s.version) || 1) + 1 });
+        await logActivity(db, { actor: 'Spielserver', action: 'ergänzt', type: 'Spiel', title: 'Neue Bauteile', detail: 'Neue Bauteile (Treppe, Fensterwand, Zaun, Schrägdach, Lagertruhe), Quests und 16 weitere Fahrzeuge' });
+      }
+      return;
+    }
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    await putDoc(db, C.settings, 'main', { ...D.DEFAULT_SETTINGS, admin_code: code });
+    await putDoc(db, C.settings, 'main', { ...D.DEFAULT_SETTINGS, admin_code: code, content_version: D.CONTENT_VERSION });
     for (const [id, v] of Object.entries(D.DEFAULT_ITEMS)) await putDoc(db, C.items, id, v);
     for (const [id, v] of Object.entries(D.DEFAULT_RECIPES)) await putDoc(db, C.recipes, id, v);
     for (const [id, v] of Object.entries(D.DEFAULT_SPECIES)) await putDoc(db, C.species, id, v);
@@ -404,7 +419,7 @@ export class Room {
     this.send(ws, {
       t: 'welcome', id: s.sid, pid, name: s.name, admin: !!s.admin, config: this.publicConfig(), version: this.version,
       profile: s.profile, players: others, vehicles: [...this.vehicles.values()].map((v) => this.vehView(v)),
-      buildings: [...this.buildings.values()], ev: this.eventView(), records: this.records,
+      buildings: [...this.buildings.values()].map(({ inv, ...b }) => b), ev: this.eventView(), records: this.records,
     });
     this.broadcast({ t: 'join', id: s.sid, name: s.name, color: s.color, admin: !!s.admin }, ws);
     if (!saved && !pid.startsWith('psmoke')) putDoc(this.env.DB, C.players, pid, s.profile).catch(() => {});
@@ -530,6 +545,7 @@ export class Room {
       case 'demolish': {
         const b = this.buildings.get(m.id); if (!b) return;
         if (b.owner !== s.pid && !s.admin) { this.send(ws, { t: 'msg', text: 'Das gehört ' + (b.ownerName || 'jemand anderem') + '.' }); return; }
+        if (b.type === 'truhe' && (b.inv || []).some(Boolean)) { this.send(ws, { t: 'msg', text: 'Leere zuerst die Truhe, bevor du sie abreißt.' }); return; }
         this.removeBuilding(b.id);
         this.send(ws, { t: 'refund', type: b.type });
         break;
@@ -540,6 +556,7 @@ export class Room {
         break;
       }
       case 'adm': this.adminAction(ws, s, m); break;
+      case 'chest': case 'chestput': case 'chesttake': this.chestAction(ws, s, m); break;
       case 'evc': {
         // Beitrag zur Team-Herausforderung (gesammelte Rohstoffe)
         if (!this.event || this.event.type !== 'sammeln' || m.item !== this.event.item) return;
@@ -563,6 +580,36 @@ export class Room {
       }
       default: break;
     }
+  }
+
+  /* ---------- Lagertruhen ---------- */
+  chestAction(ws, s, m) {
+    const b = this.buildings.get(m.id);
+    if (!b || b.type !== 'truhe' || !s.pos) return;
+    if (Math.hypot(b.x - s.pos[0], b.z - s.pos[2]) > 7) { this.send(ws, { t: 'msg', text: 'Du bist zu weit von der Truhe entfernt.' }); return; }
+    if (b.owner !== s.pid && !s.admin) { this.send(ws, { t: 'msg', text: 'Diese Truhe gehört ' + (b.ownerName || 'jemand anderem') + '.' }); return; }
+    const inv = Array.from({ length: D.CHEST_SLOTS }, (_, i) => (Array.isArray(b.inv) && b.inv[i]) || null);
+    const out = { t: 'chest', id: b.id, inv, owner: b.ownerName || '' };
+    if (m.t === 'chestput') {
+      const def = this.cfg.items[m.item]; if (!def) return;
+      const stack = Math.max(1, Number(def.stack) || 1);
+      let left = Math.floor(clampNum(m.n, 1, stack * D.CHEST_SLOTS, 1));
+      const want = left;
+      for (const x of inv) { if (left <= 0) break; if (x && x.id === m.item && x.n < stack) { const k = Math.min(stack - x.n, left); x.n += k; left -= k; } }
+      for (let i = 0; i < inv.length && left > 0; i++) if (!inv[i]) { const k = Math.min(stack, left); inv[i] = { id: m.item, n: k }; left -= k; }
+      out.put = { item: m.item, n: want - left };
+      if (left > 0) out.full = 1;
+    } else if (m.t === 'chesttake') {
+      const i = Math.floor(clampNum(m.slot, 0, D.CHEST_SLOTS - 1, 0)); const x = inv[i]; if (!x) return;
+      const n = Math.floor(clampNum(m.n, 1, x.n, x.n));
+      x.n -= n; if (x.n <= 0) inv[i] = null;
+      out.took = { item: x.id, n };
+    }
+    if (out.put || out.took) {
+      b.inv = inv;
+      putDoc(this.env.DB, C.buildings, b.id, b).catch(() => {});
+    }
+    this.send(ws, out);
   }
 
   /* ---------- Events & Bestzeiten ---------- */

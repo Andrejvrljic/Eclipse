@@ -49,7 +49,7 @@ export function createUI(ctx) {
       if ($('hotbar').innerHTML !== html) $('hotbar').innerHTML = html;
       const s = hb[sel];
       const d = s && S.def(s.id);
-      $('held-name').textContent = d ? d.name + (d.damage ? ` · ${d.damage} Schaden` : d.food ? ` · +${d.food} Sättigung` : d.structure ? ' · zum Bauen klicken' : '') : 'Faust';
+      $('held-name').textContent = d ? d.name + (d.damage ? ` · ${d.damage} Schaden` : d.food ? ` · +${d.food} Sättigung` : d.structure ? ' · klicken zum Bauen, R zum Drehen' : '') : 'Faust';
     },
     tracker() {
       if (!S.profile) return;
@@ -66,15 +66,23 @@ export function createUI(ctx) {
       ctx.onPanel?.(true);
       api.render();
     },
-    close() { open = false; $('panel').hidden = true; ctx.onPanel?.(false); },
+    close() { open = false; $('panel').hidden = true; api._lastBody = api._lastTabs = ''; ctx.onPanel?.(false); },
     render() {
       if (!open) return;
+      const ch = ctx.chest && ctx.chest();
+      if (tab === 'chest' && !ch) tab = 'inv';
       const tabs = [['inv', 'Inventar'], ['craft', 'Herstellen'], ['quests', 'Quests']];
+      if (ch) tabs.unshift(['chest', 'Truhe']);
       if (ctx.isAdmin()) tabs.push(['admin', 'Admin']);
-      $('panel-tabs').innerHTML = tabs.map(([k, l]) => `<button data-tab="${k}" aria-pressed="${k === tab}">${l}</button>`).join('');
+      const tabsHtml = tabs.map(([k, l]) => `<button data-tab="${k}" aria-pressed="${k === tab}">${l}</button>`).join('');
+      if (tabsHtml !== api._lastTabs) { $('panel-tabs').innerHTML = tabsHtml; api._lastTabs = tabsHtml; }
       const p = S.profile;
       let html = '';
-      if (tab === 'inv') {
+      if (tab === 'chest' && ch) {
+        html = `<p class="hint">Tippe einen Platz in deinem Inventar an, um ihn in die Truhe zu legen. Tippe einen Platz in der Truhe an, um ihn herauszunehmen.${ch.owner ? ' Truhe von ' + esc(ch.owner) + '.' : ''}</p>
+          <h4 class="sub">Truhe</h4><div class="grid">${ch.inv.map((s, i) => `<button class="slot" data-ctake="${i}">${icon(s && s.id, s && s.n)}</button>`).join('')}</div>
+          <h4 class="sub">Dein Inventar</h4><div class="grid">${p.inv.map((s, i) => `<button class="slot ${i < HOTBAR ? 'hb' : ''}" data-cput="${i}">${icon(s && s.id, s && s.n)}</button>`).join('')}</div>`;
+      } else if (tab === 'inv') {
         const sel = picked >= 0 ? p.inv[picked] : null;
         const d = sel && S.def(sel.id);
         html = `<p class="hint">Plätze 1–8 sind deine Schnellleiste. Tippe zwei Plätze nacheinander an, um sie zu tauschen.</p>
@@ -107,6 +115,7 @@ export function createUI(ctx) {
           <section><h4>Ich</h4><div class="row">
             <button class="btn ${a.fly ? 'on' : ''}" data-adm="fly">Fliegen ${a.fly ? 'AN' : 'AUS'}</button>
             <button class="btn ${a.god ? 'on' : ''}" data-adm="god">Unverwundbar ${a.god ? 'AN' : 'AUS'}</button>
+            <button class="btn ${a.freeBuild ? 'on' : ''}" data-adm="freebuild">Kostenlos bauen ${a.freeBuild ? 'AN' : 'AUS'}</button>
             <button class="btn" data-adm="heal-me">Heilen</button>
             <button class="btn" data-adm="spawn-tp">Zum Startplatz</button></div>
             <p class="hint">Fliegen: Leertaste hoch, C runter, Shift schneller.</p></section>
@@ -128,7 +137,8 @@ export function createUI(ctx) {
             <button class="btn ${cfg().settings.pvp ? 'on' : ''}" data-adm="pvp">Spieler-Kämpfe ${cfg().settings.pvp ? 'AN' : 'AUS'}</button></div></section>
         </div>`;
       }
-      $('panel-body').innerHTML = html;
+      // Nur neu zeichnen, wenn sich etwas geändert hat (sonst gehen Klicks/Taps verloren)
+      if (html !== api._lastBody) { $('panel-body').innerHTML = html; api._lastBody = html; }
     },
     death(show, by = '') {
       $('death').hidden = !show;
@@ -139,6 +149,8 @@ export function createUI(ctx) {
       $('panel-tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; picked = -1; api.render(); } });
       $('panel-close').addEventListener('click', () => api.close());
       $('panel-body').addEventListener('click', (e) => {
+        const cput = e.target.closest('[data-cput]'); if (cput) { ctx.onChestPut?.(+cput.dataset.cput); return; }
+        const ctake = e.target.closest('[data-ctake]'); if (ctake) { ctx.onChestTake?.(+ctake.dataset.ctake); return; }
         const slot = e.target.closest('[data-slot]');
         if (slot) {
           const i = +slot.dataset.slot;

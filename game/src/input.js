@@ -9,7 +9,7 @@ export function createInput(canvas, ui) {
     touch: matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window,
     locked: false, lastLook: 0,
   };
-  const uiKeys = { Tab: 'inventory', KeyI: 'inventory', KeyP: 'admin', Escape: 'escape', KeyH: 'help' };
+  const uiKeys = { Tab: 'inventory', KeyI: 'inventory', KeyP: 'admin', Escape: 'escape', KeyH: 'help', KeyM: 'map' };
   // Tasten nur ignorieren, wenn wirklich in ein sichtbares Eingabefeld getippt wird
   const typing = (t) => (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) && t.offsetParent !== null;
 

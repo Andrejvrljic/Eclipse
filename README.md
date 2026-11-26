@@ -23,7 +23,18 @@ Lokal starten: `npm install && npm run dev:game`
 ### Steuerung
 WASD laufen/fahren · Maus umsehen · Leertaste springen (im Auto Handbremse) · Shift sprinten · **E interagieren**
 (ein-/aussteigen, Türen, Truhen, Schatz, füttern) · Linksklick angreifen/sammeln/bauen · Tab Inventar · F reiten ·
-X abreißen · R Auto aufstellen · H Hilfe · P Admin-Menü. Auf Tablets gibt es Touch-Knöpfe.
+X abreißen · R Bauteil drehen / Auto aufstellen · M Inselkarte · H Hilfe · P Admin-Menü. Auf Tablets gibt es Touch-Knöpfe.
+
+### Basenbau
+Fundament (mit Steinsockel am Hang), Wand, Türwand, Fensterwand, Decke, Schrägdach, Treppe (8 Stufen, 3 m hoch),
+Zaun, Lagerfeuer, Schlafsack und **Lagertruhe** (16 Plätze, nur Besitzer und Admins, Inhalt auf dem Server gespeichert;
+volle Truhen lassen sich nicht abreißen). R dreht Bauteile. Admins können im Admin-Menü „Kostenlos bauen“ einschalten.
+
+### Fahrzeuge
+26 Fahrzeuge in 6 Typen: Geländewagen, Sportwagen (schnell, tief), Buggy (geländegängig), Pickup, Quad und Truck –
+10 am Startplatz, 2 an der Rennstrecke, der Rest auf der Insel verteilt. Bei Nacht und Sturm haben Fahrzeuge Scheinwerfer.
+Neue Inhalte werden in bestehende Welten automatisch nachgetragen (`content_version` in `game_settings/main`),
+ohne Änderungen aus dem Dashboard zu überschreiben.
 
 ### Aktivitäten
 - **Hindernisparcours** am Startplatz (grüner Start, goldenes Ziel; Boden berühren = von vorn), Bestzeiten in `game_records/parcours`

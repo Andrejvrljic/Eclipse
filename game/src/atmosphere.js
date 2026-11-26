@@ -49,6 +49,8 @@ export function createAtmosphere(scene, world, { lowEnd = false } = {}) {
 
   return {
     get weather() { return weather; },
+    /** Dunkel genug für Scheinwerfer (Nacht, Abend bei Regen, Sturm). */
+    get dark() { return cur.si * wf.light < 1.5; },
     get label() { return timeMode === 'Zyklus' ? 'Tag-Nacht-Zyklus' : timeMode; },
     apply(settings = {}) {
       timeMode = (PRESETS[settings.time_mode] || settings.time_mode === 'Zyklus') ? settings.time_mode : 'Finsternis';
