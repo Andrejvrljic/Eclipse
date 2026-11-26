@@ -62,8 +62,10 @@ export function createNet(scene, opts) {
       opts.onMessage?.(m);
     };
     ws.onclose = (ev) => {
-      api.connected = false; opts.onStatus?.(false, ev.code ? `Code ${ev.code}${ev.reason ? ', ' + ev.reason : ''}` : '');
-      if (ev.code >= 4000 && ev.code < 4100) stopped = true;
+      // 4000–4099: vom Server abgelehnt (Admin-Code, voll, zweites Fenster, entfernt) → nicht neu verbinden
+      const final = ev.code >= 4000 && ev.code < 4100;
+      if (final) stopped = true;
+      api.connected = false; opts.onStatus?.(false, ev.code ? `Code ${ev.code}${ev.reason ? ', ' + ev.reason : ''}` : '', final);
       if (!stopped) schedule();
     };
     ws.onerror = () => { try { ws.close(); } catch { /* egal */ } };

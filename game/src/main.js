@@ -169,8 +169,10 @@ function startGame(name, color, code) {
   net = createNet(scene, {
     hello: () => ({ pid: pid(), name, color, code }),
     onCount: (n) => { $('online').textContent = `${n} online`; },
-    onStatus: (ok, info) => {
+    onStatus: (ok, info, final) => {
       $('net-dot').dataset.ok = ok ? '1' : '0';
+      // Vom Server abgelehnt: Grund steht schon unter dem Namen, kein „nicht erreichbar“ anzeigen
+      if (final) { $('loading').textContent = ''; $('play').disabled = false; $('play').textContent = 'Spielen'; return; }
       if (!ok && joined) { $('online').textContent = 'Verbindung unterbrochen – neuer Versuch …'; ui.toast('Verbindung unterbrochen. Das Spiel verbindet sich automatisch neu.', 'warn'); }
       if (ok && joined) $('online').textContent = `${net.count} online`;
       if (!ok && !joined) { tries++; $('loading').textContent = `Spielserver nicht erreichbar${info ? ' (' + info + ')' : ''} – Versuch ${tries + 1} läuft …`; }

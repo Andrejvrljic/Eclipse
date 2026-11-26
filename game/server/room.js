@@ -363,8 +363,20 @@ export class Room {
     // Admin-Namen sind geschützt: nur mit dem Admin-Code aus dem Dashboard
     if (this.isAdminName(name)) {
       const code = String(this.cfg.settings.admin_code || '');
-      if (!code || String(m.code || '').trim().toUpperCase() !== code.toUpperCase()) {
-        this.send(ws, { t: 'denied', reason: 'Der Name „' + name + '“ ist für einen Admin reserviert. Gib den Admin-Code ein oder wähle einen anderen Namen.' });
+      const given = String(m.code || '').trim();
+      // Schutz gegen Durchprobieren: höchstens 20 falsche Codes pro 5 Minuten und Adresse (Schulnetz = eine Adresse)
+      this.adminFails = this.adminFails || new Map();
+      const fl = (this.adminFails.get(s.ip) || []).filter((t) => now() - t < 300000);
+      if (fl.length >= 20) {
+        this.send(ws, { t: 'denied', reason: 'Zu viele falsche Admin-Codes. Warte 5 Minuten.' });
+        try { ws.close(4001, 'admin'); } catch { /* egal */ }
+        return;
+      }
+      if (!code || given.toUpperCase() !== code.toUpperCase()) {
+        if (given) { fl.push(now()); this.adminFails.set(s.ip, fl); }
+        this.send(ws, { t: 'denied', reason: given
+          ? 'Der Admin-Code ist falsch. Du findest ihn im Dashboard unter Spielsteuerung → Welt & Regeln (6 Zeichen).'
+          : 'Der Name „' + name + '“ ist für einen Admin reserviert. Gib den Admin-Code ein oder wähle einen anderen Namen.' });
         try { ws.close(4001, 'admin'); } catch { /* egal */ }
         return;
       }
@@ -835,7 +847,7 @@ export class Room {
     if (request.headers.get('Upgrade') !== 'websocket') return new Response('WebSocket erwartet', { status: 426 });
     const [client, server] = Object.values(new WebSocketPair());
     server.accept();
-    const s = { sid: Math.random().toString(36).slice(2, 10), ws: server, ready: false, name: '', color: '#A78BFA', pos: null, st: null, win: 0, count: 0 };
+    const s = { sid: Math.random().toString(36).slice(2, 10), ip: request.headers.get('cf-connecting-ip') || 'x', ws: server, ready: false, name: '', color: '#A78BFA', pos: null, st: null, win: 0, count: 0 };
     this.sessions.set(server, s);
     server.addEventListener('message', (ev) => {
       if (typeof ev.data !== 'string' || ev.data.length > 12000) return;
