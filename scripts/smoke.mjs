@@ -55,7 +55,8 @@ async function main() {
   const rnd = () => Math.random().toString(36).slice(2, 10);
   const A = client('A'), B = client('B');
   const t0 = Date.now();
-  for (let i = 0; i < 100 && !(A.open && B.open); i++) await sleep(100);
+  // bis zu 20 s: beim ersten Start nach einem Update lädt der Spielserver erst seine Daten
+  for (let i = 0; i < 200 && !(A.open && B.open); i++) await sleep(100);
   ok('WebSocket-Verbindung A', A.open, A.closed ? `geschlossen ${A.closed.code} ${A.closed.reason}` : `${Date.now() - t0} ms`);
   ok('WebSocket-Verbindung B', B.open, B.closed ? `geschlossen ${B.closed.code} ${B.closed.reason}` : '');
   if (!A.open) return;

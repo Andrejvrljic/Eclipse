@@ -1,7 +1,7 @@
 // Spielserver (Cloudflare Durable Object): ein gemeinsamer Raum für alle Spieler.
 // Steuert Kreaturen (Bewegung, Angriffe, Zähmen), gemeinsame Fahrzeuge, Bauwerke und Spielstände
 // und übernimmt Einstellungen und Befehle aus dem Dashboard (gemeinsame D1-Datenbank).
-import { init, getDoc, listDocs, putDoc, patchDoc, deleteDoc, logActivity } from '../../worker/store.js';
+import { init, getDoc, listDocs, putDoc, patchDoc, deleteDoc, logActivity, nextStamp } from '../../worker/store.js';
 import { buildGrid, makeSampler, SIZE, SPAWN } from '../src/terrain.js';
 import * as D from '../src/shared/defaults.js';
 
@@ -49,13 +49,19 @@ export class Room {
       // Neue Inhalte in bestehende Welten nachtragen – nur, was es noch nicht gibt (Änderungen aus dem Dashboard bleiben)
       const cv = Number(s.content_version) || 1;
       if (cv < D.CONTENT_VERSION) {
+        // Alles in einem Rutsch schreiben (wenige Datenbank-Abfragen → schneller Start).
+        // INSERT OR IGNORE: vorhandene oder im Dashboard gelöschte Einträge bleiben, wie sie sind.
+        const t0 = await nextStamp(db); let k = 0;
+        const stmts = [];
+        const ins = (coll, id, doc) => { if (doc) stmts.push(db.prepare('INSERT OR IGNORE INTO docs (coll, id, data, deleted, updated) VALUES (?, ?, ?, 0, ?)').bind(coll, id, JSON.stringify(doc), t0 + k++)); };
         for (let v = cv + 1; v <= D.CONTENT_VERSION; v++) {
           const add = D.CONTENT_ADDED[v]; if (!add) continue;
-          for (const id of add.items || []) if (!(await getDoc(db, C.items, id))) await putDoc(db, C.items, id, D.DEFAULT_ITEMS[id]);
-          for (const id of add.recipes || []) if (!(await getDoc(db, C.recipes, id))) await putDoc(db, C.recipes, id, D.DEFAULT_RECIPES[id]);
-          for (const id of add.quests || []) if (!(await getDoc(db, C.quests, id))) await putDoc(db, C.quests, id, D.DEFAULT_QUESTS[id]);
-          for (const id of add.vehicles || []) if (!(await getDoc(db, C.vehicles, id))) await putDoc(db, C.vehicles, id, D.DEFAULT_VEHICLES[id]);
+          for (const id of add.items || []) ins(C.items, id, D.DEFAULT_ITEMS[id]);
+          for (const id of add.recipes || []) ins(C.recipes, id, D.DEFAULT_RECIPES[id]);
+          for (const id of add.quests || []) ins(C.quests, id, D.DEFAULT_QUESTS[id]);
+          for (const id of add.vehicles || []) ins(C.vehicles, id, D.DEFAULT_VEHICLES[id]);
         }
+        if (stmts.length) await db.batch(stmts);
         await patchDoc(db, C.settings, 'main', { content_version: D.CONTENT_VERSION, version: (Number(s.version) || 1) + 1 });
         await logActivity(db, { actor: 'Spielserver', action: 'ergänzt', type: 'Spiel', title: 'Neue Bauteile', detail: 'Neue Bauteile (Treppe, Fensterwand, Zaun, Schrägdach, Lagertruhe), Quests und 16 weitere Fahrzeuge' });
       }
