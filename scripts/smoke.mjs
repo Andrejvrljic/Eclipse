@@ -71,7 +71,8 @@ async function main() {
   if (!wb || wb.t !== 'welcome') return;
   ok('B sieht A in der Spielerliste', (wb.players || []).some((p) => p.id === wa.id), `${(wb.players || []).length} andere Spieler`);
   const join = await A.wait((m) => m.t === 'join' && m.id === wb.id, 5000);
-  ok('A bekommt „join“ von B mit Farbe', !!join && join.color === '#F59E0B', join ? join.color : 'keine Meldung');
+  // Die Farbe muss mit B's eigenem Profil übereinstimmen (das Dashboard kann eine Farbpalette vorgeben)
+  ok('A bekommt „join“ von B mit Farbe', !!join && /^#[0-9a-fA-F]{6}$/.test(join.color) && join.color === wb.profile.color, join ? join.color : 'keine Meldung');
 
   // Positionen austauschen
   const posA = [3, 9, 4];

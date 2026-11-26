@@ -19,17 +19,16 @@ function makeSky() {
   const group = new THREE.Group();
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { sun: { value: SUN_DIR } },
+    uniforms: { sun: { value: SUN_DIR }, top: { value: new THREE.Color(0.03, 0.02, 0.09) }, mid: { value: new THREE.Color(0.17, 0.10, 0.30) }, hor: { value: new THREE.Color(0.55, 0.27, 0.42) }, glow: { value: 1 } },
     vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: `varying vec3 vDir; uniform vec3 sun;
+    fragmentShader: `varying vec3 vDir; uniform vec3 sun; uniform vec3 top; uniform vec3 mid; uniform vec3 hor; uniform float glow;
       void main(){
         float h = vDir.y;
-        vec3 top = vec3(0.03,0.02,0.09); vec3 mid = vec3(0.17,0.10,0.30); vec3 hor = vec3(0.55,0.27,0.42);
         vec3 col = mix(hor, mid, smoothstep(0.0, 0.25, h));
         col = mix(col, top, smoothstep(0.25, 0.85, h));
-        col = mix(col, vec3(0.10,0.07,0.16), smoothstep(0.0, -0.2, h));
+        col = mix(col, hor * 0.25, smoothstep(0.0, -0.2, h));
         float s = max(dot(normalize(vDir), sun), 0.0);
-        col += vec3(0.65,0.45,0.95) * pow(s, 24.0) * 0.55 + vec3(0.9,0.5,0.55) * pow(s, 4.0) * 0.12;
+        col += (vec3(0.65,0.45,0.95) * pow(s, 24.0) * 0.55 + vec3(0.9,0.5,0.55) * pow(s, 4.0) * 0.12) * glow;
         gl_FragColor = vec4(col, 1.0);
       }`,
   });
@@ -40,7 +39,8 @@ function makeSky() {
     pos.push(Math.cos(th) * rr * 2400, y * 2400, Math.sin(th) * rr * 2400);
   }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  group.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xd9d0ff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0.8, fog: false, depthWrite: false })));
+  const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xd9d0ff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0.8, fog: false, depthWrite: false }));
+  group.add(stars);
   const corona = new THREE.Sprite(new THREE.SpriteMaterial({
     map: radialTexture([[0, 'rgba(255,255,255,1)'], [0.2, 'rgba(255,240,255,0.95)'], [0.27, 'rgba(196,170,255,0.7)'], [0.45, 'rgba(124,58,237,0.25)'], [1, 'rgba(124,58,237,0)']]),
     fog: false, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending,
@@ -52,6 +52,7 @@ function makeSky() {
   }));
   disc.position.copy(SUN_DIR).multiplyScalar(1980); disc.scale.setScalar(214);
   group.add(corona, disc);
+  group.userData = { mat, stars, corona, disc };
   return group;
 }
 
@@ -96,7 +97,8 @@ export function createWorld(scene, RAPIER, physics) {
   scene.fog = new THREE.FogExp2(FOG, 0.0042);
   const sky = makeSky();
   scene.add(sky);
-  scene.add(new THREE.HemisphereLight(0xa898f0, 0x3a3048, 1.5));
+  const hemi = new THREE.HemisphereLight(0xa898f0, 0x3a3048, 1.5);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffd4e6, 2.1);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -211,7 +213,7 @@ export function createWorld(scene, RAPIER, physics) {
   const nearTrees = makeIndex(trees), nearRocks = makeIndex(rocks), nearBushes = makeIndex(bushes);
 
   return {
-    heightAt, slopeAt, sky, sun, shards, trees, rocks, bushes, terrainCollider,
+    heightAt, slopeAt, sky, sun, hemi, shards, trees, rocks, bushes, terrainCollider,
     nearTrees, nearRocks, nearBushes,
     /** Prüft, ob die Linie von a nach b durch eine Baumkrone führt; liefert die freie Länge. */
     crownClear(a, dir, dist) {

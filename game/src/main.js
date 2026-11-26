@@ -10,6 +10,8 @@ import { createInput } from './input.js';
 import { createNet } from './net.js';
 import { createState } from './state.js';
 import { createUI } from './ui.js';
+import { createAtmosphere } from './atmosphere.js';
+import { createActivities } from './activities.js';
 import { SPAWN, SEA_LEVEL, findLand } from './terrain.js';
 import { setHeld, swingFigure } from './models.js';
 import * as D from './shared/defaults.js';
@@ -23,7 +25,7 @@ const COLORS = ['#A78BFA', '#38BDF8', '#22C55E', '#F59E0B', '#F472B6', '#EF4444'
 const DT = 1 / 60;
 const FIST = { name: 'Faust', damage: 6 };
 
-let renderer, scene, camera, physics, world, player, vehicles, creatures, buildings, input, net, state, ui;
+let renderer, scene, camera, physics, world, player, vehicles, creatures, buildings, input, net, state, ui, atmos, acts;
 let config = { settings: D.DEFAULT_SETTINGS, items: D.DEFAULT_ITEMS, recipes: D.DEFAULT_RECIPES, species: D.DEFAULT_SPECIES, quests: D.DEFAULT_QUESTS };
 let playing = false, joined = false, dead = false, admin = false, god = false;
 let driving = null, pendingEnter = null, riding = null, ridePose = null;
@@ -33,6 +35,13 @@ const projectiles = [];
 const depleted = new Map(); // Rohstoffquelle → { hits, until }
 const focus = new THREE.Vector3(), camPos = new THREE.Vector3(), tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3();
 const getConfig = () => config;
+/** Startpunkt aus dem Dashboard (Welt & Regeln), immer auf Land. */
+function spawnPoint(spread = 8) {
+  const s = config.settings || {};
+  const x = Number(s.spawn_x) || SPAWN.x, z = Number(s.spawn_z) || SPAWN.z;
+  const l = world.findLand(x, z);
+  return { x: l.x + (Math.random() - 0.5) * spread, z: l.z + (Math.random() - 0.5) * spread };
+}
 
 /* ---------- Startbildschirm ---------- */
 function pid() {
@@ -44,9 +53,19 @@ function setupStart() {
   const nameIn = $('name');
   nameIn.value = ls.get('name') || '';
   $('code').value = ls.get('code') || '';
-  let color = COLORS.includes(ls.get('color')) ? ls.get('color') : COLORS[Math.floor(Math.random() * COLORS.length)];
+  let palette = COLORS;
+  let color = palette.includes(ls.get('color')) ? ls.get('color') : palette[Math.floor(Math.random() * palette.length)];
   const sw = $('colors');
-  sw.innerHTML = COLORS.map((c) => `<button type="button" class="sw" data-c="${c}" style="--c:${c}" aria-label="Farbe ${c}" aria-pressed="${c === color}"></button>`).join('');
+  const drawColors = () => { sw.innerHTML = palette.map((c) => `<button type="button" class="sw" data-c="${c}" style="--c:${c}" aria-label="Farbe ${c}" aria-pressed="${c === color}"></button>`).join(''); };
+  drawColors();
+  // Farbauswahl kommt aus dem Dashboard (Welt & Regeln → Spielerfarben)
+  fetch('/api/public', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+    if (!j || !Array.isArray(j.colors) || !j.colors.length) return;
+    palette = j.colors.map((c) => c.toUpperCase());
+    if (!palette.includes(String(color).toUpperCase())) color = palette.includes(String(ls.get('color')).toUpperCase()) ? String(ls.get('color')).toUpperCase() : palette[0];
+    else color = String(color).toUpperCase();
+    drawColors();
+  }).catch(() => {});
   sw.addEventListener('click', (e) => {
     const b = e.target.closest('[data-c]'); if (!b) return;
     color = b.dataset.c;
@@ -74,7 +93,7 @@ async function boot() {
   const canvas = $('game');
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   const touch = matchMedia('(pointer: coarse)').matches;
-  renderer.setPixelRatio(Math.min(devicePixelRatio, touch ? 1.5 : 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, touch ? 1.25 : 2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -87,6 +106,8 @@ async function boot() {
   await new Promise((r) => setTimeout(r, 30));
   world = createWorld(scene, RAPIER, physics);
   world.findLand = (x, z) => findLand(world.heightAt, x, z);
+  if (touch) { world.sun.shadow.mapSize.set(1024, 1024); renderer.shadowMap.type = THREE.BasicShadowMap; }
+  atmos = createAtmosphere(scene, world, { lowEnd: touch });
   vehicles = createVehicles(RAPIER, physics, scene, world);
   creatures = createCreatures(scene, getConfig);
   buildings = createBuildings(RAPIER, physics, scene, world);
@@ -110,6 +131,15 @@ async function boot() {
     onAte: () => ui.toast('Mahlzeit!'),
   });
   ui.bind();
+  acts = createActivities({
+    scene, RAPIER, physics, world, ui, send: (m) => net && net.send(m), getProfile: () => state.profile,
+    onLoot: (loot, coins, kind) => {
+      for (const [id, n] of loot) state.add(id, n, { silent: true });
+      state.profile.coins += coins; state.markDirty();
+      ui.big(`${kind === 'turm' ? 'Wachturm-Truhe' : kind === 'ruine' ? 'Ruinen-Truhe' : 'Verstecktes Lager'}: ${loot.map(([id, n]) => n + '× ' + (state.def(id)?.name || id)).join(', ')} · +${coins} Münzen`);
+      state.addXp(10);
+    },
+  });
   input = createInput(canvas, {
     playing: () => playing && !dead && !ui.open,
     onLockChange: (locked) => { $('pause').hidden = !playing || locked || input.state.touch || ui.open || dead; },
@@ -156,11 +186,13 @@ function onServer(m) {
   switch (m.t) {
     case 'welcome': {
       config = m.config; admin = !!m.admin;
+      atmos.apply(config.settings);
+      acts.setEvent(m.ev || null);
       // Beim Wiederverbinden den aktuellen Stand im Browser behalten und an den Server schicken
       if (joined && state.profile) net.send({ t: 'save', profile: state.serialize() });
       else state.load(m.profile);
       if (!player) {
-        let sp = { x: SPAWN.x + (Math.random() - 0.5) * 8, z: SPAWN.z + (Math.random() - 0.5) * 8 };
+        let sp = spawnPoint();
         const pos = m.profile.pos;
         if (Array.isArray(pos) && world.heightAt(pos[0], pos[2]) > 0.5) sp = { x: pos[0], z: pos[2] };
         player = createPlayer(RAPIER, physics, scene, { x: sp.x, y: world.heightAt(sp.x, sp.z), z: sp.z }, m.profile.color || '#A78BFA', {
@@ -182,7 +214,7 @@ function onServer(m) {
         if (config.settings.motd) ui.big(config.settings.motd);
         if (admin) ui.toast('Du bist Admin. Drück P für das Admin-Menü.', 'item');
         if (!ls.get('helpSeen')) { $('help').hidden = false; ls.set('helpSeen', '1'); setTimeout(() => { $('help').hidden = true; }, 12000); }
-        if (new URLSearchParams(location.search).has('debug')) window.__eclipse = { player, vehicles, creatures, buildings, world, physics, state, net, useHeld, interact, leaveVehicle, adminOp, get driving() { return driving; }, get riding() { return riding; }, setYaw: (v) => { yaw = v; }, setSlot: (i) => { selSlot = i; }, get dead() { return dead; }, hurt };
+        if (new URLSearchParams(location.search).has('debug')) window.__eclipse = { acts, atmos, get config() { return config; }, player, vehicles, creatures, buildings, world, physics, state, net, useHeld, interact, leaveVehicle, adminOp, get driving() { return driving; }, get riding() { return riding; }, setYaw: (v) => { yaw = v; }, setSlot: (i) => { selSlot = i; }, get dead() { return dead; }, hurt };
       }
       $('admin-badge').hidden = !admin;
       break;
@@ -192,7 +224,13 @@ function onServer(m) {
       $('name-err').textContent = m.reason; $('play').disabled = false; $('play').textContent = 'Spielen';
       if (/Admin/.test(m.reason)) $('code-row').hidden = false;
       break;
-    case 'config': config = m.config; creatures.clear(); ui.render(); break;
+    case 'config': config = m.config; atmos.apply(config.settings); creatures.clear(); ui.render(); break;
+    case 'ev': acts.setEvent(m.ev, m); break;
+    case 'reward': {
+      state.addXp(m.xp || 0); state.profile.coins += m.coins || 0; state.markDirty();
+      ui.toast(`${m.text || 'Belohnung'} · +${m.xp} EP · +${m.coins} Münzen`, 'item');
+      break;
+    }
     case 'cr': creatures.snapshot(m.c, performance.now()); break;
     case 'crdie': creatures.die(m.id, m.silent); break;
     case 'kill': {
@@ -263,7 +301,7 @@ function respawn(keep = false) {
   dead = false; ui.death(false);
   if (!keep) { state.profile.hp = Math.round(state.maxHp * 0.6); state.profile.hunger = Math.max(state.profile.hunger, 50); }
   const bed = buildings.bedsOf(pidCached())[0];
-  const p = bed ? { x: bed.x + 1.5, z: bed.z } : { x: SPAWN.x + (Math.random() - 0.5) * 8, z: SPAWN.z + (Math.random() - 0.5) * 8 };
+  const p = bed ? { x: bed.x + 1.5, z: bed.z } : spawnPoint();
   player.teleport(p.x, bed ? bed.y + 0.3 : world.heightAt(p.x, p.z), p.z);
   ui.toast(bed ? 'Am Schlafsack wiederbelebt.' : 'Am Startplatz wiederbelebt.');
   if (!input.state.touch) $('game').requestPointerLock?.()?.catch?.(() => {});
@@ -319,7 +357,7 @@ function adminOp(op, a) {
     case 'fly': player.flying = !player.flying; ui.toast(player.flying ? 'Fliegen an' : 'Fliegen aus'); break;
     case 'god': god = !god; ui.toast(god ? 'Unverwundbar an' : 'Unverwundbar aus'); break;
     case 'heal-me': state.profile.hp = state.maxHp; state.profile.hunger = 100; stamina = state.maxStamina; break;
-    case 'spawn-tp': player.teleport(SPAWN.x, world.heightAt(SPAWN.x, SPAWN.z), SPAWN.z); break;
+    case 'spawn-tp': { const sp = spawnPoint(2); player.teleport(sp.x, world.heightAt(sp.x, sp.z), sp.z); break; }
     case 'give-me': state.add(a.item, a.itemN, { silent: false }); break;
     case 'spawn': net.send({ t: 'adm', op: 'spawn', sp: a.sp, n: a.n }); break;
     case 'clear': net.send({ t: 'adm', op: 'clear', r: 60 }); break;
@@ -398,8 +436,10 @@ function gather(feet, dir, d) {
   if (best.kind === 'baum') { id = 'holz'; n = d && d.wood ? Number(d.wood) : 1; }
   else if (best.kind === 'fels') { id = 'stein'; n = d && d.stone ? Number(d.stone) : 1; }
   else { id = 'beeren'; n = 2; depleted.set(key, { hits: 0, until: performance.now() + 45000 }); }
-  state.add(id, Math.max(1, Math.round(n * mult)), { count: true });
+  const got = Math.max(1, Math.round(n * mult));
+  state.add(id, got, { count: true });
   state.addXp(1);
+  const ev = acts.event; if (ev && ev.type === 'sammeln' && ev.item === id) net.send({ t: 'evc', item: id, n: got });
 }
 
 function interact() {
@@ -408,6 +448,8 @@ function interact() {
   // Tür
   const b = buildings.pick(feet, yaw, 3.5);
   if (b && b.b.type === 'wand_tuer') { net.send({ t: 'door', id: b.b.id, open: !b.open }); return; }
+  // Truhen und Event-Schatz
+  if (acts.interact(feet)) return;
   // Fahrzeug
   const v = vehicles.nearest(feet, 4.5);
   if (v) { pendingEnter = v.id; net.send({ t: 'venter', id: v.id }); return; }
@@ -472,6 +514,7 @@ function frame(now) {
     camera.position.set(SPAWN.x + Math.sin(previewT) * 110, 48, SPAWN.z + Math.cos(previewT) * 110);
     camera.lookAt(SPAWN.x, 12, SPAWN.z);
     world.update(t, camera.position);
+    atmos.update(dt, camera.position);
     renderer.render(scene, camera);
     return;
   }
@@ -612,6 +655,8 @@ function frame(now) {
 
   updateCamera(dt, inp);
   world.update(t, focus);
+  atmos.update(dt, camera.position);
+  acts.update(dt, { feet: player.feet(new THREE.Vector3()), grounded: player.grounded, driving: !!driving, vpos: driving ? vehicles.position(driving) : null, yaw });
 
   // Netz: eigener Zustand
   const feet = player.feet(tmp);
@@ -643,6 +688,7 @@ function frame(now) {
     const c = creatures.pick(f, aimDir(new THREE.Vector3()), 5);
     const b = buildings.pick(f, yaw, 3.5);
     if (bp) prompt = touch ? 'Angriff-Knopf: bauen' : 'Klick: bauen  ·  X: eigenes Bauteil abreißen';
+    else if (acts.prompt(f, touch)) prompt = acts.prompt(f, touch);
     else if (b && b.b.type === 'wand_tuer') prompt = (touch ? 'Benutzen: ' : 'E ') + (b.open ? 'Tür schließen' : 'Tür öffnen');
     else if (v) prompt = v.driver ? 'Fahrzeug ist besetzt' : (touch ? 'Benutzen: Einsteigen' : `E Einsteigen (${D.VEHICLE_TYPES[v.type]?.name || 'Fahrzeug'})`);
     else if (c && c.mine) prompt = (touch ? '' : 'E ') + (c.mine === 2 ? 'Folgen lassen' : 'Bleiben lassen') + (c.def.rideable ? (touch ? ' · Reiten-Knopf' : '  ·  F Reiten') : '');

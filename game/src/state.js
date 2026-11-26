@@ -12,6 +12,7 @@ export function createState(getCfg, events = {}) {
     get profile() { return p; },
     get dirty() { return dirty; },
     clean() { dirty = false; },
+    markDirty() { touch(); },
     load(profile) {
       p = { ...profile };
       const inv = Array.isArray(p.inv) ? p.inv.slice(0, INV_SLOTS) : [];

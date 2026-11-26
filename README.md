@@ -16,9 +16,35 @@ Basen bauen, Kreaturen jagen, zähmen und reiten, Fahrzeuge (Geländewagen, Quad
 | Physik | Rapier.js: Charakter-Controller, Abrollen, Raycast-Fahrzeuge, Höhenfeld |
 | Spielserver | Cloudflare Durable Object (`game/server/room.js`): Kreaturen-KI, Fahrzeuge, Bauwerke, Spielstände |
 | Steuerung aus dem Dashboard | gemeinsame D1-Datenbank: `game_*`-Sammlungen, Befehle über `game_commands` |
-| Admins | Namen und Admin-Code in den Spielregeln (Dashboard → Spielsteuerung → Regeln) |
+| Admins | Namen und Admin-Code in Dashboard → Spielsteuerung → Welt & Regeln |
 
 Lokal starten: `npm install && npm run dev:game`
+
+### Steuerung
+WASD laufen/fahren · Maus umsehen · Leertaste springen (im Auto Handbremse) · Shift sprinten · **E interagieren**
+(ein-/aussteigen, Türen, Truhen, Schatz, füttern) · Linksklick angreifen/sammeln/bauen · Tab Inventar · F reiten ·
+X abreißen · R Auto aufstellen · H Hilfe · P Admin-Menü. Auf Tablets gibt es Touch-Knöpfe.
+
+### Aktivitäten
+- **Hindernisparcours** am Startplatz (grüner Start, goldenes Ziel; Boden berühren = von vorn), Bestzeiten in `game_records/parcours`
+- **Rennstrecke** mit 10 Toren rund um den Startplatz (nur im Fahrzeug), Bestzeiten in `game_records/rennen`
+- **18 Truhen** in Ruinen, an Wachtürmen und in Verstecken; jede Truhe füllt sich nach 30 Minuten wieder
+- **Events** (Dashboard → Spielsteuerung → Events): Schatzsuche, Team-Sammeln, Bauprojekt, Kreaturen-Wettbewerb,
+  doppelte EP; Fortschritt und Zeit sieht jeder im Spiel, Ergebnisse landen in `game_events`
+
+### Dashboard-Schutz
+Die Spielsteuerung ist mit einem **Dashboard-Passwort** geschützt (beim ersten Öffnen festlegen; gespeichert als
+gesalzener SHA-256-Hash in der Tabelle `meta`). Ohne Passwort sind Spielstände, Live-Status, Befehle und der
+Admin-Code nicht lesbar, und alle `game_*`-Daten sind nicht änderbar. Die Projektplanung bleibt frei bearbeitbar.
+Passwort vergessen: Zeile `dash_key` in der D1-Tabelle `meta` im Cloudflare-Dashboard löschen, dann neu festlegen.
+
+### Welt & Regeln (Dashboard)
+Wetter (Klar/Nebel/Regen/Sturm), Tageszeit (Finsternis/Morgen/Tag/Abend/Nacht/Zyklus), Zykluslänge, Spawnpunkt,
+erlaubte Spielerfarben, automatische Schatzsuche, Multiplikatoren, PvP, Admins und Admin-Code.
+
+### Tests
+`node scripts/smoke.mjs <spiel-url> <dashboard-url>` prüft Seiten, Datenbank, Beitreten, Positionen, Kreaturen,
+Fahrzeugfarben und doppelte Sitzungen. Läuft nach jedem Deploy automatisch in GitHub Actions.
 
 # ECLIPSE – Dev Platform
 

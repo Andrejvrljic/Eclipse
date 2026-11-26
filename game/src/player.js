@@ -67,7 +67,7 @@ export function createPlayer(RAPIER, physics, scene, spawn, color, events = {}) 
         .setAngvel(spin || { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 4, z: (Math.random() - 0.5) * 8 })
         .setLinearDamping(0.25).setAngularDamping(0.6).setCcdEnabled(true));
       const col = physics.createCollider(RAPIER.ColliderDesc.capsule(HALF, RADIUS * 0.95).setDensity(1.1).setFriction(0.9).setRestitution(0.2), rb);
-      tumble = { body: rb, collider: col, t: 0, rest: 0 };
+      tumble = { body: rb, collider: col, t: 0, rest: 0, real: performance.now() };
       root.position.set(0, -CENTER, 0);
     },
 
@@ -79,7 +79,8 @@ export function createPlayer(RAPIER, physics, scene, spawn, color, events = {}) 
         const v = Math.hypot(lv.x, lv.y, lv.z);
         if (tumble.t > 0.5 && v < 1.3) tumble.rest += dt; else tumble.rest = 0;
         const tp = tumble.body.translation();
-        if (tp.y < SEA_LEVEL - 1.5 || tumble.rest > 0.35 || tumble.t > 5) endTumble();
+        // Sicherheitsgrenze auch in Echtzeit, damit langsame Geräte nicht lange liegen bleiben
+        if (tp.y < SEA_LEVEL - 1.5 || tumble.rest > 0.35 || tumble.t > 5 || performance.now() - tumble.real > 6000) endTumble();
         speed = v;
         return;
       }

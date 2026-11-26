@@ -18,6 +18,49 @@ function safeEqual(a, b) {
   return r === 0;
 }
 
+/* ---------- Schutz der Spielsteuerung ---------- */
+// Spielstände, Befehle und Live-Status sind nur mit Dashboard-Passwort lesbar; alle game_*-Daten nur damit änderbar.
+const PROTECTED_READ = new Set(['game_players', 'game_commands', 'game_status', 'game_tames']);
+const isGame = (c) => c.startsWith('game_');
+const fails = new Map();
+const tooMany = (ip) => { const n = Date.now(); const l = (fails.get(ip) || []).filter((t) => n - t < 60000); fails.set(ip, l); return l.length >= 8; };
+async function sha(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+async function keyRecord(db) {
+  const row = await db.prepare("SELECT v FROM meta WHERE k = 'dash_key'").first();
+  try { return row ? JSON.parse(row.v) : null; } catch { return null; }
+}
+/** true, wenn die Anfrage das richtige Dashboard-Passwort mitschickt. */
+async function hasKey(request, db) {
+  const key = request.headers.get('x-dash-key') || '';
+  if (!key) return false;
+  const rec = await keyRecord(db); if (!rec) return false;
+  return safeEqual(await sha(rec.salt + key), rec.hash);
+}
+async function handleAuth(request, env, url) {
+  const db = env.DB;
+  const ip = request.headers.get('cf-connecting-ip') || 'x';
+  if (url.pathname === '/api/game-auth' && request.method === 'GET') return json({ configured: !!(await keyRecord(db)) });
+  if (url.pathname === '/api/game-auth/setup' && request.method === 'POST') {
+    if (await keyRecord(db)) return json({ error: 'Das Passwort ist bereits festgelegt.' }, 409);
+    const { data, error } = await readJson(request); if (error) return error;
+    const key = String(data.key || '');
+    if (key.length < 6) return json({ error: 'Das Passwort braucht mindestens 6 Zeichen.' }, 400);
+    const salt = crypto.randomUUID();
+    await db.prepare("INSERT OR REPLACE INTO meta (k, v) VALUES ('dash_key', ?)").bind(JSON.stringify({ salt, hash: await sha(salt + key) })).run();
+    return json({ ok: true });
+  }
+  if (url.pathname === '/api/game-auth/check' && request.method === 'POST') {
+    if (tooMany(ip)) return json({ error: 'Zu viele Fehlversuche. Warte eine Minute.' }, 429);
+    if (await hasKey(request, db)) return json({ ok: true });
+    fails.set(ip, [...(fails.get(ip) || []), Date.now()]);
+    return json({ error: 'Das Passwort ist falsch.', code: 'dash_key' }, 401);
+  }
+  return json({ error: 'Nicht gefunden' }, 404);
+}
+
 async function readJson(request) {
   const text = await request.text();
   if (text.length > MAX_BODY) return { error: json({ error: 'Anfrage zu groß' }, 413) };
@@ -38,15 +81,21 @@ async function handleDocs(request, env, url) {
     const since = Math.max(0, Number(url.searchParams.get('since')) || 0);
     const { results } = await db.prepare('SELECT coll, id, data, deleted, updated FROM docs WHERE updated >= ? ORDER BY updated').bind(since).all();
     const row = await db.prepare('SELECT MAX(updated) AS m FROM docs').first();
-    return json({
-      cursor: Number(row && row.m) || 0,
-      docs: results.map((r) => ({ c: r.coll, id: r.id, d: r.deleted ? null : JSON.parse(r.data), x: r.deleted ? 1 : 0, u: r.updated })),
-    });
+    const authed = await hasKey(request, db);
+    const docs = [];
+    for (const r of results) {
+      if (!authed && PROTECTED_READ.has(r.coll)) continue;
+      let d = r.deleted ? null : JSON.parse(r.data);
+      if (!authed && r.coll === 'game_settings' && d) { d = { ...d }; delete d.admin_code; }
+      docs.push({ c: r.coll, id: r.id, d, x: r.deleted ? 1 : 0, u: r.updated });
+    }
+    return json({ cursor: Number(row && row.m) || 0, authed, docs });
   }
 
   if (parts.length !== 2) return json({ error: 'Nicht gefunden' }, 404);
   const [coll, id] = parts;
   if (!COLL_SET.has(coll) || !ID_RE.test(id)) return json({ error: 'Ungültiger Pfad' }, 400);
+  if (isGame(coll) && request.method !== 'GET' && !(await hasKey(request, db))) return json({ error: 'Für die Spielsteuerung ist das Dashboard-Passwort nötig.', code: 'dash_key' }, 401);
 
   if (request.method === 'PUT') {
     const { data, error } = await readJson(request);
@@ -75,6 +124,7 @@ async function handleApi(request, env, url) {
   }
   await init(env.DB);
 
+  if (url.pathname.startsWith('/api/game-auth')) return handleAuth(request, env, url);
   if (url.pathname === '/api/docs' || url.pathname.startsWith('/api/docs/')) return handleDocs(request, env, url);
   return json({ error: 'Nicht gefunden' }, 404);
 }

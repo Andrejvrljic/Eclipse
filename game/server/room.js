@@ -8,7 +8,10 @@ import * as D from '../src/shared/defaults.js';
 const C = {
   settings: 'game_settings', items: 'game_items', recipes: 'game_recipes', species: 'game_species', quests: 'game_quests',
   vehicles: 'game_vehicles', players: 'game_players', buildings: 'game_buildings', commands: 'game_commands', status: 'game_status', tames: 'game_tames',
+  events: 'game_events', records: 'game_records',
 };
+const EVENT_NAMES = { schatz: 'Gemeinsame Schatzsuche', sammeln: 'Team-Herausforderung', bauen: 'Gemeinsames Bauprojekt', jagd: 'Kreaturen-Wettbewerb', doppelt: 'Doppelte Erfahrung' };
+const COURSES = { parcours: { name: 'Hindernisparcours', min: 6000 }, rennen: { name: 'Rennen', min: 25000 } };
 const TICK = 100;               // ms je Simulationsschritt
 const VIEW = 260;               // Kreaturen nur in diesem Umkreis an Spieler senden
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -16,6 +19,8 @@ const now = () => Date.now();
 const rid = (p) => p + Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 6);
 const clampNum = (v, a, b, d = 0) => { const n = Number(v); return Number.isFinite(n) ? Math.min(b, Math.max(a, n)) : d; };
 const round = (n, k = 10) => Math.round(n * k) / k;
+// Kurzes, nicht umkehrbares Kennzeichen für Bestenlisten (die Spieler-ID selbst bleibt geheim)
+const pidTag = (pid) => { let h = 0x811c9dc5; for (const ch of String(pid) + 'eclipse') { h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(36); };
 const ensureMap = (m) => (m && typeof m === 'object' && !Array.isArray(m) ? m : {});
 
 let SAMPLER = null;
@@ -67,7 +72,22 @@ export class Room {
   /** Konfiguration für Spieler (ohne Admin-Code). */
   publicConfig() {
     const s = { ...this.cfg.settings }; delete s.admin_code;
+    s.xp_multiplier = this.xpMult();
     return { ...this.cfg, settings: s };
+  }
+  xpMult() {
+    const base = clampNum(this.cfg.settings.xp_multiplier, 0, 100, 1);
+    return this.event && this.event.type === 'doppelt' ? base * 2 : base;
+  }
+  /** Startpunkt aus dem Dashboard (auf Land). */
+  spawnPoint() {
+    const x = clampNum(this.cfg.settings.spawn_x, -SIZE / 2 + 30, SIZE / 2 - 30, SPAWN.x), z = clampNum(this.cfg.settings.spawn_z, -SIZE / 2 + 30, SIZE / 2 - 30, SPAWN.z);
+    if (heightAt(x, z) > 1.5) return { x, z };
+    return { x: SPAWN.x, z: SPAWN.z };
+  }
+  palette() {
+    const list = String(this.cfg.settings.player_colors || '').split(',').map((c) => c.trim()).filter((c) => COLOR_RE.test(c));
+    return list.length ? list : null;
   }
 
   async load() {
@@ -76,6 +96,9 @@ export class Room {
     await this.seed(db);
     await this.loadConfig();
     for (const b of await listDocs(db, C.buildings)) this.buildings.set(b.id, b);
+    this.records = {};
+    for (const r of await listDocs(db, C.records)) this.records[r.id] = Array.isArray(r.top) ? r.top : [];
+    this.lastEventEnd = now();
     await this.syncVehicles(true);
     for (const t of await listDocs(db, C.tames)) {
       const sp = this.cfg.species[t.species]; if (!sp) continue;
@@ -232,7 +255,8 @@ export class Room {
     const sp = this.cfg.species[c.sp] || {};
     this.broadcast({ t: 'crdie', id: c.id, x: c.x, y: c.y, z: c.z });
     const killer = bySession || (byCreature && byCreature.owner && this.sessionByPid(byCreature.owner));
-    if (killer) this.send(killer.ws, { t: 'kill', sp: c.sp, name: sp.name, xp: Math.round(clampNum(sp.xp, 0, 100000, 10) * clampNum(this.cfg.settings.xp_multiplier, 0, 100, 1)), drops: ensureMap(sp.drops) });
+    if (killer) this.send(killer.ws, { t: 'kill', sp: c.sp, name: sp.name, xp: Math.round(clampNum(sp.xp, 0, 100000, 10) * this.xpMult()), drops: ensureMap(sp.drops) });
+    if (killer && this.event && this.event.type === 'jagd' && (!this.event.species || this.event.species === c.sp)) this.contribute(killer, 1);
     if (c.owner) { deleteDoc(this.env.DB, C.tames, c.id).catch(() => {}); const o = this.sessionByPid(c.owner); if (o) this.send(o.ws, { t: 'msg', text: `Dein ${sp.name || 'Begleiter'} wurde besiegt.` }); }
   }
 
@@ -316,6 +340,7 @@ export class Room {
       inv, armor: items[raw.armor] ? raw.armor : '', quests,
       shards: Array.isArray(raw.shards) ? raw.shards.filter(Number.isInteger).slice(0, 200) : [],
       tamed: Math.floor(clampNum(raw.tamed, 0, 1e6)),
+      stashes: Object.fromEntries(Object.entries(ensureMap(raw.stashes)).filter(([k, v]) => /^k\d{1,3}$/.test(k) && Number.isFinite(v)).slice(0, 100)),
       stats: { kills: Math.floor(clampNum(raw.stats && raw.stats.kills, 0, 1e9)), crafted: Math.floor(clampNum(raw.stats && raw.stats.crafted, 0, 1e9)), built: Math.floor(clampNum(raw.stats && raw.stats.built, 0, 1e9)) },
     };
   }
@@ -325,6 +350,13 @@ export class Room {
   }
 
   async onHello(ws, s, m) {
+    // War niemand online, läuft die Dashboard-Abfrage nicht: Einstellungen jetzt frisch laden
+    if (!this.timer) {
+      try {
+        const st = await getDoc(this.env.DB, C.settings, 'main');
+        if (st && Number(st.version) !== this.version) { await this.loadConfig(); await this.syncVehicles(false); }
+      } catch { /* alte Einstellungen weiter nutzen */ }
+    }
     let name = String(m.name || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20);
     if (name.length < 2) name = 'Spieler';
     const pid = /^[a-z0-9]{8,24}$/i.test(m.pid || '') ? m.pid : rid('p');
@@ -350,6 +382,8 @@ export class Room {
     const old = this.sessionByPid(pid); if (old) { this.send(old.ws, { t: 'denied', reason: 'Du hast das Spiel in einem anderen Fenster geöffnet.' }); try { old.ws.close(4003, 'dup'); } catch { /* egal */ } this.drop(old.ws); }
 
     s.pid = pid; s.name = finalName; s.color = COLOR_RE.test(m.color) ? m.color : '#A78BFA';
+    const pal = this.palette();
+    if (pal && !pal.some((c) => c.toLowerCase() === s.color.toLowerCase())) s.color = pal[Math.floor(Math.random() * pal.length)];
     const saved = await getDoc(this.env.DB, C.players, pid);
     s.profile = saved ? { ...D.newProfile(pid, s.name, s.color, this.cfg.settings), ...saved, name: s.name, color: s.color } : D.newProfile(pid, s.name, s.color, this.cfg.settings);
     s.profile.online = true;
@@ -358,7 +392,7 @@ export class Room {
     this.send(ws, {
       t: 'welcome', id: s.sid, pid, name: s.name, admin: !!s.admin, config: this.publicConfig(), version: this.version,
       profile: s.profile, players: others, vehicles: [...this.vehicles.values()].map((v) => this.vehView(v)),
-      buildings: [...this.buildings.values()],
+      buildings: [...this.buildings.values()], ev: this.eventView(), records: this.records,
     });
     this.broadcast({ t: 'join', id: s.sid, name: s.name, color: s.color, admin: !!s.admin }, ws);
     if (!saved && !pid.startsWith('psmoke')) putDoc(this.env.DB, C.players, pid, s.profile).catch(() => {});
@@ -478,6 +512,7 @@ export class Room {
         this.buildings.set(b.id, b);
         this.broadcast({ t: 'build', b });
         putDoc(db, C.buildings, b.id, b).catch(() => {});
+        if (this.event && this.event.type === 'bauen') this.contribute(s, 1);
         break;
       }
       case 'demolish': {
@@ -493,8 +528,131 @@ export class Room {
         break;
       }
       case 'adm': this.adminAction(ws, s, m); break;
+      case 'evc': {
+        // Beitrag zur Team-Herausforderung (gesammelte Rohstoffe)
+        if (!this.event || this.event.type !== 'sammeln' || m.item !== this.event.item) return;
+        const t = now(); if (t - (s.evcAt || 0) < 150) return; s.evcAt = t;
+        this.contribute(s, Math.floor(clampNum(m.n, 1, 30, 1)));
+        break;
+      }
+      case 'evopen': {
+        const ev = this.event; if (!ev || ev.type !== 'schatz' || !ev.chest || !s.pos) return;
+        if (Math.hypot(ev.chest[0] - s.pos[0], ev.chest[2] - s.pos[2]) > 7) return;
+        ev.opener = s.pid; ev.openerName = s.name;
+        this.endEvent(true);
+        break;
+      }
+      case 'rec': {
+        const course = COURSES[m.course]; const ms = Math.round(Number(m.ms));
+        if (!course || !Number.isFinite(ms) || ms < course.min || ms > 30 * 60000) return;
+        if (now() - (s.recAt || 0) < 3000) return; s.recAt = now();
+        this.addRecord(s, m.course, ms);
+        break;
+      }
       default: break;
     }
+  }
+
+  /* ---------- Events & Bestzeiten ---------- */
+  eventView() {
+    const e = this.event; if (!e) return null;
+    return { type: e.type, title: e.title, text: e.text, left: Math.max(0, e.ends - now()), target: e.target || 0, progress: e.progress || 0, item: e.item || '', species: e.species || '', chest: e.chest || null, participants: Object.keys(e.contrib).length, xp: e.xp, coins: e.coins };
+  }
+  startEvent(o) {
+    if (this.event) this.endEvent(false, true);
+    const type = EVENT_NAMES[o.type] ? o.type : 'schatz';
+    const minutes = clampNum(o.minutes, 1, 180, 15);
+    const e = { type, title: EVENT_NAMES[type], started: now(), ends: now() + minutes * 60000, contrib: {}, names: {}, progress: 0,
+      xp: Math.round(clampNum(o.xp, 0, 100000, 200)), coins: Math.round(clampNum(o.coins, 0, 100000, 50)) };
+    if (type === 'schatz') {
+      let p = null;
+      for (let i = 0; i < 80 && !p; i++) { const c = this.randomLand(0); if (c && Math.hypot(c[0] - SPAWN.x, c[1] - SPAWN.z) > 90 && heightAt(c[0], c[1]) < 32) p = c; }
+      p = p || this.randomLand(0) || [60, 60];
+      e.chest = [round(p[0]), round(heightAt(p[0], p[1]), 100), round(p[1])];
+      e.text = 'Eine Schatztruhe ist erschienen! Folge dem Lichtstrahl. Alle, die beim Öffnen in der Nähe sind, bekommen die Belohnung.';
+    } else if (type === 'sammeln') {
+      e.item = this.cfg.items[o.item] ? o.item : 'holz';
+      e.target = Math.round(clampNum(o.target, 1, 100000, 300));
+      e.text = `Sammelt zusammen ${e.target}× ${(this.cfg.items[e.item] || {}).name || e.item}!`;
+    } else if (type === 'bauen') {
+      e.target = Math.round(clampNum(o.target, 1, 10000, 40));
+      e.text = `Baut zusammen ${e.target} Bauteile!`;
+    } else if (type === 'jagd') {
+      e.species = this.cfg.species[o.species] ? o.species : '';
+      e.text = `Wer besiegt die meisten ${e.species ? this.cfg.species[e.species].name : 'Kreaturen'}? Die besten drei bekommen Extra-Belohnungen.`;
+    } else {
+      e.text = 'Für alle gibt es jetzt doppelte Erfahrungspunkte!';
+    }
+    this.event = e;
+    this.broadcast({ t: 'ev', ev: this.eventView(), start: 1 });
+    if (type === 'doppelt') this.broadcast({ t: 'config', config: this.publicConfig(), version: this.version });
+    this.writeStatus(true);
+  }
+  contribute(s, n) {
+    const e = this.event; if (!e) return;
+    e.contrib[s.pid] = (e.contrib[s.pid] || 0) + n; e.names[s.pid] = s.name;
+    e.progress += n; e.dirty = true;
+    if (e.target && e.progress >= e.target) this.endEvent(true);
+  }
+  reward(pid, xp, coins, text) {
+    const s = this.sessionByPid(pid);
+    if (s) this.send(s.ws, { t: 'reward', xp: Math.round(xp), coins: Math.round(coins), text });
+  }
+  endEvent(success, silent = false) {
+    const e = this.event; if (!e) return;
+    this.event = null; this.lastEventEnd = now();
+    let result = '', rewarded = 0;
+    const ranking = Object.entries(e.contrib).sort((a, b) => b[1] - a[1]);
+    if (e.type === 'schatz') {
+      if (success) {
+        const near = [...this.sessions.values()].filter((x) => x.ready && x.pos && Math.hypot(x.pos[0] - e.chest[0], x.pos[2] - e.chest[2]) < 50);
+        for (const x of near) { this.reward(x.pid, e.xp * (x.pid === e.opener ? 1.5 : 1), e.coins * (x.pid === e.opener ? 1.5 : 1), x.pid === e.opener ? 'Du hast den Schatz geöffnet!' : 'Schatz gefunden!'); }
+        rewarded = near.length;
+        result = `${e.openerName} hat den Schatz geöffnet · ${near.length} Spieler belohnt`;
+      } else result = 'Der Schatz wurde nicht gefunden.';
+    } else if (e.type === 'jagd') {
+      ranking.forEach(([pid, n], i) => { const k = i === 0 ? 3 : i === 1 ? 2 : i === 2 ? 1.5 : 0.4; this.reward(pid, e.xp * k, e.coins * k, `Platz ${i + 1} mit ${n} Siegen`); });
+      rewarded = ranking.length;
+      result = ranking.length ? ranking.slice(0, 3).map(([pid, n], i) => `${i + 1}. ${e.names[pid]} (${n})`).join(' · ') : 'Niemand hat mitgemacht.';
+    } else if (e.type === 'sammeln' || e.type === 'bauen') {
+      if (success) for (const [pid] of ranking) this.reward(pid, e.xp, e.coins, 'Gemeinsames Ziel erreicht!');
+      rewarded = success ? ranking.length : 0;
+      result = success ? `Ziel erreicht: ${e.progress} / ${e.target} · ${ranking.length} Helfer` : `Nicht geschafft: ${e.progress} / ${e.target}`;
+    } else {
+      result = 'Doppelte Erfahrung ist vorbei.';
+    }
+    if (!silent) this.broadcast({ t: 'ev', ev: null, title: e.title, result, ok: success || e.type === 'jagd' || e.type === 'doppelt' ? 1 : 0 });
+    if (e.type === 'doppelt') this.broadcast({ t: 'config', config: this.publicConfig(), version: this.version });
+    const id = 'e' + e.started.toString(36);
+    putDoc(this.env.DB, C.events, id, { type: e.type, title: e.title, result, participants: Math.max(rewarded, ranking.length), started: new Date(e.started).toISOString(), ended: new Date().toISOString(),
+      top: ranking.slice(0, 5).map(([pid, n]) => ({ name: e.names[pid], n })) }).catch(() => {});
+    logActivity(this.env.DB, { actor: 'Spielserver', action: 'beendet', type: 'Event', title: e.title, detail: result }).catch(() => {});
+    this.writeStatus(true);
+  }
+  tickEvent() {
+    const e = this.event;
+    if (e) {
+      if (now() >= e.ends) { this.endEvent(e.type === 'jagd' || e.type === 'doppelt'); return; }
+      if (e.dirty && this.tickN % 10 === 0) { e.dirty = false; this.broadcast({ t: 'ev', ev: this.eventView() }); }
+      return;
+    }
+    const every = clampNum(this.cfg.settings.treasure_every, 0, 600, 0);
+    if (every > 0 && now() - this.lastEventEnd > every * 60000 && [...this.sessions.values()].some((x) => x.ready)) this.startEvent({ type: 'schatz', minutes: 10, xp: 150, coins: 40 });
+  }
+  addRecord(s, course, ms) {
+    const who = pidTag(s.pid);
+    const list = (this.records[course] || []).filter((r) => r.who !== who || r.ms <= ms);
+    const mine = list.find((r) => r.who === who);
+    if (mine) { this.send(s.ws, { t: 'msg', text: `Zeit ${(ms / 1000).toFixed(2)} s · deine Bestzeit bleibt ${(mine.ms / 1000).toFixed(2)} s` }); return; }
+    list.push({ who, name: s.name, ms, at: new Date().toISOString() });
+    list.sort((a, b) => a.ms - b.ms);
+    const top = list.slice(0, 10);
+    this.records[course] = top;
+    const place = top.findIndex((r) => r.who === who) + 1;
+    if (!String(s.pid).startsWith('psmoke')) putDoc(this.env.DB, C.records, course, { name: COURSES[course].name, top }).catch(() => {});
+    if (place === 1) this.broadcast({ t: 'msg', text: `Neuer Rekord im ${COURSES[course].name}: ${s.name} mit ${(ms / 1000).toFixed(2)} s!`, big: 1 });
+    else this.send(s.ws, { t: 'msg', text: place ? `Neue Bestzeit: ${(ms / 1000).toFixed(2)} s · Platz ${place}` : `Neue Bestzeit: ${(ms / 1000).toFixed(2)} s` });
+    this.broadcast({ t: 'recs', course, top: top.map((r) => ({ name: r.name, ms: r.ms })) });
   }
 
   removeBuilding(id) {
@@ -580,7 +738,7 @@ export class Room {
         break;
       }
       case 'heal': if (target) this.send(target.ws, { t: 'admin', op: 'heal' }); else await patchOffline((p) => ({ ...p, hp: 100000, hunger: 100 })); break;
-      case 'teleport': if (target) this.send(target.ws, { t: 'admin', op: 'teleport', p: [SPAWN.x, heightAt(SPAWN.x, SPAWN.z) + 1, SPAWN.z] }); else await patchOffline((p) => ({ ...p, pos: null })); break;
+      case 'teleport': if (target) { const sp = this.spawnPoint(); this.send(target.ws, { t: 'admin', op: 'teleport', p: [sp.x, heightAt(sp.x, sp.z) + 1, sp.z] }); } else await patchOffline((p) => ({ ...p, pos: null })); break;
       case 'kick': if (target) { this.send(target.ws, { t: 'denied', reason: 'Du wurdest über das Dashboard aus dem Spiel entfernt.' }); try { target.ws.close(4004, 'kick'); } catch { /* egal */ } this.drop(target.ws); } break;
       case 'reset': {
         const fresh = D.newProfile(cmd.pid, '', '', this.cfg.settings);
@@ -589,6 +747,8 @@ export class Room {
         break;
       }
       case 'msg': { const text = String(cmd.text || '').slice(0, 200).trim(); if (text) this.broadcast({ t: 'msg', text: 'Ansage: ' + text, big: 1 }); break; }
+      case 'event_start': this.startEvent(cmd); break;
+      case 'event_stop': if (this.event) this.endEvent(this.event.type === 'jagd' || this.event.type === 'doppelt'); break;
       case 'respawn_creatures': {
         for (const c of [...this.creatures.values()]) if (!c.owner) { this.creatures.delete(c.id); this.broadcast({ t: 'crdie', id: c.id, silent: 1 }); }
         this.populate(); break;
@@ -624,6 +784,8 @@ export class Room {
       await putDoc(this.env.DB, C.status, 'live', {
         online, creatures: counts, tamed: [...this.creatures.values()].filter((c) => c.owner).length,
         buildings: this.buildings.size, vehicles: this.vehicles.size, updated: new Date().toISOString(),
+        event: this.event ? { ...this.eventView(), ends: new Date(this.event.ends).toISOString() } : null,
+        weather: this.cfg.settings.weather || 'Klar', time_mode: this.cfg.settings.time_mode || 'Finsternis',
       });
     } catch { /* egal */ }
   }
@@ -650,6 +812,7 @@ export class Room {
       this.tickN++;
       try { this.simulate(dt); } catch { /* Simulation weiterlaufen lassen */ }
       this.flushStates();
+      try { this.tickEvent(); } catch { /* weiter */ }
       if (this.tickN % 2 === 0) for (const s of this.sessions.values()) if (s.ready) this.sendCreatures(s);
       if (this.tickN % 20 === 0) { this.pollDashboard().catch(() => {}); this.writeStatus().catch(() => {}); }
       if (this.tickN % 100 === 0) { this.populate(); }

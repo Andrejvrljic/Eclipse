@@ -2,7 +2,7 @@
 import seed from '../seed/startdaten.json';
 
 export const COLLS = ['project', 'phases', 'tasks', 'developers', 'areas', 'techdocs', 'files', 'activity',
-  'game_settings', 'game_items', 'game_recipes', 'game_species', 'game_quests', 'game_vehicles', 'game_players', 'game_buildings', 'game_status', 'game_commands', 'game_tames'];
+  'game_settings', 'game_items', 'game_recipes', 'game_species', 'game_quests', 'game_vehicles', 'game_players', 'game_buildings', 'game_status', 'game_commands', 'game_tames', 'game_events', 'game_records'];
 export const ID_RE = /^[A-Za-z0-9_\-.~:@+]{1,200}$/;
 
 let initialized = false;

@@ -639,7 +639,7 @@ const ls = {
 };
 
 const COLLS = ['project', 'phases', 'tasks', 'developers', 'areas', 'techdocs', 'files', 'activity',
-  'game_settings', 'game_items', 'game_recipes', 'game_species', 'game_quests', 'game_vehicles', 'game_players', 'game_buildings', 'game_status', 'game_commands', 'game_tames'];
+  'game_settings', 'game_items', 'game_recipes', 'game_species', 'game_quests', 'game_vehicles', 'game_players', 'game_buildings', 'game_status', 'game_commands', 'game_tames', 'game_events', 'game_records'];
 const STATUS = ['Backlog', 'In Arbeit', 'Review', 'Erledigt'];
 const PRIO = ['Niedrig', 'Mittel', 'Hoch', 'Kritisch'];
 const PHASE_STATUS = ['Ausstehend', 'Aktiv', 'Abgeschlossen'];
@@ -814,6 +814,7 @@ function errText(e) {
   if (c === 'resource_exhausted') return 'Zu viele Änderungen in kurzer Zeit. Warte einen Moment und versuche es erneut.';
   if (c === 'revoked') return 'Der Zugriff auf die Daten wurde entzogen.';
   if (c === 'unauthorized') return 'Der Team-Schlüssel fehlt oder ist falsch.';
+  if (c === 'dash_key') return 'Für die Spielsteuerung brauchst du das Dashboard-Passwort.';
   return 'Speichern fehlgeschlagen. Prüfe die Verbindung und versuche es erneut.';
 }
 async function withRetry(fn) {
@@ -892,9 +893,13 @@ async function restDb() {
   const mirror = {}; const subs = []; let cursor = 0; let first = null; let timer = 0; let fails = 0; let askClose = null;
   const req = async (method, url, body) => {
     let r; const usedKey = ls.get('teamKey') || '';
-    try { r = await fetch(url, { method, cache: 'no-store', headers: { 'content-type': 'application/json', 'x-team-key': usedKey }, body: body ? JSON.stringify(body) : undefined }); }
+    try { r = await fetch(url, { method, cache: 'no-store', headers: { 'content-type': 'application/json', 'x-team-key': usedKey, 'x-dash-key': ls.get('dashKey') || '' }, body: body ? JSON.stringify(body) : undefined }); }
     catch { throw { code: 'unavailable', message: 'network' }; }
-    if (r.status === 401) { if (usedKey === (ls.get('teamKey') || '')) askTeamKey(!!usedKey); throw { code: 'unauthorized', message: 'team key' }; }
+    if (r.status === 401) {
+      const j = await r.json().catch(() => ({}));
+      if (j.code === 'dash_key') { meta.gameAuth = false; scheduleRender(); throw { code: 'dash_key', message: 'Dashboard-Passwort nötig' }; }
+      if (usedKey === (ls.get('teamKey') || '')) askTeamKey(!!usedKey); throw { code: 'unauthorized', message: 'team key' };
+    }
     if (r.status === 400 || r.status === 404 || r.status === 413) throw { code: 'invalid_argument', message: String(r.status) };
     if (r.status === 429) throw { code: 'resource_exhausted', message: '429' };
     if (!r.ok) throw { code: 'unavailable', message: String(r.status) };
@@ -916,6 +921,7 @@ async function restDb() {
       else if (!m[x.id] || JSON.stringify(m[x.id]) !== JSON.stringify(x.d)) { m[x.id] = x.d; changed.add(x.c); }
     }
     cursor = Math.max(cursor, Number(r.cursor) || 0);
+    if (typeof r.authed === 'boolean' && meta.gameAuth !== r.authed) { meta.gameAuth = r.authed; scheduleRender(); }
     if (askClose && document.body.contains(askClose.el)) { askClose(); askClose = null; }
     return changed;
   };
@@ -950,6 +956,7 @@ async function restDb() {
     catch (e) { if (prev === undefined) delete m[id]; else m[id] = prev; throw e; }
   };
   meta.rest = true;
+  meta.restResync = () => { cursor = 0; if (first) loop(); };
   const coll = (c, q = {}) => ({
     orderBy: (f, dir) => coll(c, { ...q, order: [f, dir] }),
     limit: (n) => coll(c, { ...q, lim: n }),
@@ -1426,7 +1433,16 @@ const G = {
   QUEST_TYPES: ['Sammeln', 'Herstellen', 'Besiegen', 'Bauen', 'Zähmen', 'Level erreichen'],
   VEHICLES: { gelaendewagen: 'Geländewagen', quad: 'Quad', truck: 'Truck' },
   STRUCTURES: { fundament: 'Fundament', wand: 'Wand', wand_tuer: 'Türwand', decke: 'Decke', lagerfeuer: 'Lagerfeuer', schlafsack: 'Schlafsack' },
-  TABS: [['live', 'Live'], ['spieler', 'Spieler'], ['kreaturen', 'Kreaturen'], ['gegenstaende', 'Gegenstände'], ['rezepte', 'Rezepte'], ['quests', 'Quests'], ['fahrzeuge', 'Fahrzeuge'], ['bauwerke', 'Bauwerke'], ['regeln', 'Regeln']],
+  TABS: [['live', 'Live'], ['events', 'Events'], ['spieler', 'Spieler'], ['statistik', 'Statistik'], ['kreaturen', 'Kreaturen'], ['gegenstaende', 'Gegenstände'], ['rezepte', 'Rezepte'], ['quests', 'Quests'], ['fahrzeuge', 'Fahrzeuge'], ['bauwerke', 'Bauwerke'], ['regeln', 'Welt & Regeln']],
+  WEATHER: ['Klar', 'Nebel', 'Regen', 'Sturm'],
+  TIMES: ['Finsternis', 'Morgen', 'Tag', 'Abend', 'Nacht', 'Zyklus'],
+  EVENTS: {
+    schatz: { name: 'Gemeinsame Schatzsuche', desc: 'Irgendwo auf der Insel erscheint eine Schatztruhe. Alle sehen Richtung und Entfernung. Wer in der Nähe ist, wenn sie geöffnet wird, bekommt die volle Belohnung.' },
+    sammeln: { name: 'Team-Herausforderung: Sammeln', desc: 'Die ganze Klasse sammelt zusammen eine Menge eines Rohstoffs. Alle, die mithelfen, werden belohnt.' },
+    bauen: { name: 'Gemeinsames Bauprojekt', desc: 'Alle bauen zusammen eine Anzahl Bauteile. Alle Bauenden werden belohnt.' },
+    jagd: { name: 'Kreaturen-Wettbewerb', desc: 'Wer besiegt in der Zeit die meisten Kreaturen? Die besten drei bekommen Extra-Belohnungen, alle Teilnehmer eine kleine.' },
+    doppelt: { name: 'Doppelte Erfahrung', desc: 'Für die Dauer des Events gibt es doppelte Erfahrungspunkte.' },
+  },
 };
 const gSettings = () => S.game_settings.main || null;
 const gStatus = () => S.game_status.live || null;
@@ -1462,13 +1478,93 @@ async function gameCommand(op, payload, logTitle, detail = '') {
 function vSpiel() {
   const tab = UI.gameTab || 'live';
   const url = gameUrl();
+  if (meta.rest && meta.gameAuth !== true) return gAuthView(url);
   const head = `<div class="page-head"><div><h1>Spielsteuerung</h1><p>Alles hier wirkt sofort im Spiel${gStatus() ? ` · zuletzt gemeldet ${esc(rel(gStatus().updated))}` : ''}</p></div>
-    <div class="actions">${url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">${ic('cube')}Spiel öffnen</a>` : ''}</div></div>
+    <div class="actions">${url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">${ic('cube')}Spiel öffnen</a>` : ''}<button class="btn btn-ghost" data-act="g-logout">Abmelden</button></div></div>
     <div class="card filters" role="tablist">${G.TABS.map(([k, l]) => `<button class="fchip" data-act="g-tab" data-k="${k}" aria-pressed="${k === tab}">${esc(l)}</button>`).join('')}</div>`;
   if (!meta.rest) return head + empty('Nur in der Cloudflare-Version', 'Die Spielsteuerung braucht die gemeinsame Datenbank mit dem Spiel. Öffne das Dashboard unter seiner workers.dev-Adresse.');
   if (!gSettings()) return head + empty('Noch keine Spieldaten', 'Sobald das Spiel einmal gestartet wurde, erscheinen hier Kreaturen, Gegenstände, Quests und Einstellungen.');
-  const fn = { live: gLive, spieler: gPlayers, kreaturen: gSpecies, gegenstaende: gItems, rezepte: gRecipes, quests: gQuests, fahrzeuge: gVehicles, bauwerke: gBuildings, regeln: gRules }[tab] || gLive;
+  const fn = { live: gLive, events: gEvents, spieler: gPlayers, statistik: gStats, kreaturen: gSpecies, gegenstaende: gItems, rezepte: gRecipes, quests: gQuests, fahrzeuge: gVehicles, bauwerke: gBuildings, regeln: gRules }[tab] || gLive;
   return head + fn();
+}
+
+/* ---------- Anmeldung für die Spielsteuerung ---------- */
+function gAuthView(url) {
+  if (meta.gameAuthConfigured === undefined) {
+    meta.gameAuthConfigured = null;
+    fetch('api/game-auth', { cache: 'no-store' }).then((r) => r.json()).then((j) => { meta.gameAuthConfigured = !!j.configured; lastHtml = ''; scheduleRender(); }).catch(() => { meta.gameAuthConfigured = undefined; });
+  }
+  const setup = meta.gameAuthConfigured === false;
+  const checking = meta.gameAuthConfigured === null || (ls.get('dashKey') && meta.gameAuth === undefined);
+  return `<div class="page-head"><div><h1>Spielsteuerung</h1><p>Geschützter Bereich</p></div>${url ? `<div class="actions"><a class="btn" href="${esc(url)}" target="_blank" rel="noopener">${ic('cube')}Spiel öffnen</a></div>` : ''}</div>
+    <section class="card" style="padding:24px;max-width:520px">
+      <h2 style="font-size:18px;margin-bottom:6px">${setup ? 'Passwort festlegen' : 'Anmelden'}</h2>
+      <p class="muted" style="margin-bottom:16px">${setup ? 'Die Spielsteuerung ist noch nicht geschützt. Lege jetzt ein Passwort fest. Nur wer es kennt, kann Spielstände, Admin-Code und Spielregeln sehen und ändern. Gib es nicht an die Klasse weiter.' : 'Gib das Dashboard-Passwort ein, um Spieler, Events, Regeln und den Admin-Code zu verwalten.'}</p>
+      ${checking ? '<p class="muted">Prüfe …</p>' : `<button class="btn btn-primary" data-act="g-auth">${setup ? 'Passwort festlegen' : 'Anmelden'}</button>`}
+    </section>`;
+}
+function gAuthForm() {
+  const setup = meta.gameAuthConfigured === false;
+  const fields = [{ k: 'key', label: 'Passwort', type: 'password', req: true, min: 6, max: 100 }];
+  if (setup) fields.push({ k: 'key2', label: 'Passwort wiederholen', type: 'password', req: true, max: 100, check: (v, all) => (v !== all.key ? 'Die Passwörter stimmen nicht überein.' : '') });
+  openForm({ title: setup ? 'Passwort festlegen' : 'Anmelden', fields, values: { key: '', key2: '' }, submitLabel: setup ? 'Festlegen' : 'Anmelden',
+    onSubmit: async (v) => {
+      try {
+        if (setup) {
+          const r = await fetch('api/game-auth/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: v.key }) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) { toast(j.error || 'Festlegen fehlgeschlagen.', 'crit'); return false; }
+        }
+        const r = await fetch('api/game-auth/check', { method: 'POST', headers: { 'x-dash-key': v.key } });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { toast(j.error || 'Anmeldung fehlgeschlagen.', 'crit'); return false; }
+      } catch { toast('Keine Verbindung zum Server.', 'crit'); return false; }
+      ls.set('dashKey', v.key); meta.gameAuth = true; meta.gameAuthConfigured = true;
+      meta.restResync?.(); lastHtml = ''; scheduleRender();
+      toast('Angemeldet.');
+      return true;
+    } });
+}
+
+/* ---------- Events ---------- */
+function gEvents() {
+  const ev = (gStatus() || {}).event;
+  const active = ev && ev.ends && new Date(ev.ends).getTime() > Date.now() ? ev : null;
+  const hist = list('game_events').sort((a, b) => String(b.ended || '').localeCompare(String(a.ended || ''))).slice(0, 20);
+  return `<div class="card" style="padding:18px;margin-bottom:16px">${active
+    ? `<div class="label">Läuft gerade</div><h2 style="font-size:20px;margin:6px 0">${esc(active.title)}</h2><p class="muted">${esc(active.text || '')}</p>
+       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px"><span>Endet in <b>${Math.max(1, Math.round((new Date(active.ends).getTime() - Date.now()) / 60000))} Min.</b> (${esc(fmtTs(active.ends))})</span>${active.target ? `<span>Fortschritt <b class="mono">${active.progress || 0} / ${active.target}</b></span>` : ''}<span>Teilnehmer <b class="mono">${active.participants || 0}</b></span></div>
+       <button class="btn btn-danger btn-sm" style="margin-top:12px" data-act="g-ev-stop">Event beenden</button>`
+    : '<div class="label">Gerade läuft kein Event</div><p class="muted" style="margin-top:6px">Starte unten ein Event. Alle Spieler sehen es sofort mit Zeit und Fortschritt.</p>'}</div>
+    <div class="grid-cards">${Object.entries(G.EVENTS).map(([k, e], i) => `<div class="area-card st" style="--i:${i}"><span class="area-name">${esc(e.name)}</span><span class="area-desc">${esc(e.desc)}</span><button class="btn btn-primary btn-sm" data-act="g-ev-start" data-k="${k}" ${active ? 'disabled' : ''}>Starten</button></div>`).join('')}</div>
+    <div class="sec-head"><h2>Vergangene Events</h2></div>
+    ${gTable(['Event', 'Ergebnis', 'Teilnehmer', 'Ende'], hist.map((h) => `<tr><td><b>${esc(h.title)}</b></td><td>${esc(h.result || '–')}</td><td class="mono">${h.participants || 0}</td><td class="muted">${esc(rel(h.ended))}</td></tr>`), 'Noch keine Events.')}`;
+}
+function gEventForm(type) {
+  const e = G.EVENTS[type];
+  const fields = [{ k: 'minutes', label: 'Dauer (Minuten)', type: 'number', min: 1, max: 180, int: true, req: true }];
+  if (type === 'sammeln') fields.push({ k: 'item', label: 'Rohstoff', type: 'select', options: [{ v: 'holz', l: 'Holz' }, { v: 'stein', l: 'Stein' }, { v: 'beeren', l: 'Beeren' }] }, { k: 'target', label: 'Ziel (gemeinsame Menge)', type: 'number', min: 1, max: 100000, int: true, req: true });
+  if (type === 'bauen') fields.push({ k: 'target', label: 'Ziel (Bauteile gesamt)', type: 'number', min: 1, max: 10000, int: true, req: true });
+  if (type === 'jagd') fields.push({ k: 'species', label: 'Kreatur', type: 'select', options: [{ v: '', l: 'Alle Arten' }, ...list('game_species').sort(byOrder).map((x) => ({ v: x.id, l: x.name }))] });
+  fields.push({ k: 'xp', label: 'Belohnung: Erfahrung', type: 'number', min: 0, max: 100000, int: true }, { k: 'coins', label: 'Belohnung: Münzen', type: 'number', min: 0, max: 100000, int: true });
+  openForm({ title: e.name + ' starten', fields, values: { minutes: type === 'doppelt' ? 30 : 15, item: 'holz', target: type === 'bauen' ? 40 : 300, species: '', xp: 200, coins: 50 }, submitLabel: 'Starten',
+    onSubmit: async (v) => gameCommand('event_start', { type, ...v }, e.name, `${v.minutes} Minuten`) });
+}
+
+/* ---------- Statistik ---------- */
+function gStats() {
+  const ps = list('game_players');
+  const sum = (f) => ps.reduce((a, p) => a + (f(p) || 0), 0);
+  const top = (f, n = 5) => ps.slice().sort((a, b) => (f(b) || 0) - (f(a) || 0)).slice(0, n).filter((p) => (f(p) || 0) > 0);
+  const kpi = (l, v, sub) => `<div class="kpi"><span class="label">${esc(l)}</span><span class="kpi-v">${v}</span><span class="kpi-s">${esc(sub)}</span></div>`;
+  const board = (title, f, unit) => `<section class="card side-card"><div class="side-head"><h2>${esc(title)}</h2></div>${top(f).map((p, i) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)"><span>${i + 1}. ${esc(p.name)}</span><b class="mono">${f(p)}${unit}</b></div>`).join('') || '<p class="muted">Noch keine Daten.</p>'}</section>`;
+  const recs = list('game_records');
+  const recBoard = (course, title) => { const r = recs.find((x) => x.id === course); const rows = (r && r.top) || []; return `<section class="card side-card"><div class="side-head"><h2>${esc(title)}</h2></div>${rows.map((x, i) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)"><span>${i + 1}. ${esc(x.name)}</span><b class="mono">${(x.ms / 1000).toFixed(2)} s</b></div>`).join('') || '<p class="muted">Noch keine Zeiten.</p>'}</section>`; };
+  return `<section class="kpis gk" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      ${kpi('Spieler', ps.length, 'haben schon gespielt')}${kpi('Besiegte Kreaturen', sum((p) => p.stats && p.stats.kills), 'von allen zusammen')}
+      ${kpi('Gebaute Teile', sum((p) => p.stats && p.stats.built), 'von allen zusammen')}${kpi('Hergestellt', sum((p) => p.stats && p.stats.crafted), 'Gegenstände')}
+      ${kpi('Gezähmt', sum((p) => p.tamed), 'Kreaturen')}${kpi('Events', list('game_events').length, 'durchgeführt')}</section>
+    <div class="grid-cards" style="margin-top:16px">${board('Höchstes Level', (p) => p.level, '')}${board('Meiste Siege', (p) => p.stats && p.stats.kills, '')}${board('Meiste Münzen', (p) => p.coins, '')}${board('Fleißigste Baumeister', (p) => p.stats && p.stats.built, '')}${recBoard('parcours', 'Hindernisparcours – Bestzeiten')}${recBoard('rennen', 'Rennen – Bestzeiten')}</div>`;
 }
 
 function gTable(cols, rows, emptyText) {
@@ -1568,11 +1664,12 @@ function gBuildings() {
 function gRules() {
   const s = gSettings();
   const row = (l, v) => `<div class="stat"><b style="font-size:16px">${esc(v)}</b><span>${esc(l)}</span></div>`;
-  return `<div class="sec-head" style="margin-top:0"><h2>Spielregeln</h2><button class="btn btn-primary btn-sm" data-act="g-rules">${ic('edit')}Regeln bearbeiten</button></div>
+  return `<div class="sec-head" style="margin-top:0"><h2>Welt & Regeln</h2><button class="btn btn-primary btn-sm" data-act="g-rules">${ic('edit')}Bearbeiten</button></div>
     <div class="statrow" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
       ${row('Erfahrung ×', s.xp_multiplier)}${row('Sammeln ×', s.gather_multiplier)}${row('Kreaturen-Schaden ×', s.damage_multiplier)}${row('Kreaturen-Menge ×', s.creature_multiplier)}
       ${row('Hunger-Tempo ×', s.hunger_rate)}${row('Max. Level', s.max_level)}${row('Start-Münzen', s.start_coins)}${row('Max. Spieler', s.max_players)}
       ${row('Spieler-Kämpfe', s.pvp ? 'AN' : 'AUS')}${row('Admins', s.admins || '–')}
+      ${row('Wetter', s.weather || 'Klar')}${row('Tageszeit', s.time_mode || 'Finsternis')}${row('Spawnpunkt', `${Math.round(s.spawn_x || 0)}, ${Math.round(s.spawn_z || 0)}`)}${row('Auto-Schatzsuche', s.treasure_every ? 'alle ' + s.treasure_every + ' min' : 'aus')}
     </div>
     <div class="card" style="padding:16px;margin-top:12px"><div class="label">Begrüßung im Spiel</div><p style="margin-top:6px">${esc(s.motd || '–')}</p></div>`;
 }
@@ -1710,14 +1807,21 @@ function gRulesForm() {
     { k: 'start_coins', label: 'Start-Münzen', type: 'number', min: 0, max: 100000, int: true },
     { k: 'max_players', label: 'Max. Spieler gleichzeitig', type: 'number', min: 1, max: 100, int: true, req: true },
     { k: 'pvp', label: 'Spieler-Kämpfe', type: 'select', options: [{ v: 'nein', l: 'Aus' }, { v: 'ja', l: 'An' }] },
+    { k: 'weather', label: 'Wetter', type: 'select', options: G.WEATHER },
+    { k: 'time_mode', label: 'Tageszeit', type: 'select', options: G.TIMES },
+    { k: 'cycle_minutes', label: 'Tag-Nacht-Zyklus (Minuten)', type: 'number', min: 2, max: 240, int: true, hint: 'Nur bei Tageszeit „Zyklus“' },
+    { k: 'spawn_x', label: 'Spawnpunkt x', type: 'number', min: -550, max: 550 },
+    { k: 'spawn_z', label: 'Spawnpunkt z', type: 'number', min: -550, max: 550 },
+    { k: 'player_colors', label: 'Spielerfarben (Hex, mit Komma)', max: 200, full: true, hint: 'z. B. #A78BFA, #38BDF8, #22C55E', check: (v) => (v && !String(v).split(',').every((c) => /^#[0-9a-fA-F]{6}$/.test(c.trim())) ? 'Nur Farben wie #A78BFA, mit Komma getrennt.' : '') },
+    { k: 'treasure_every', label: 'Automatische Schatzsuche alle … Minuten (0 = aus)', type: 'number', min: 0, max: 600, int: true },
     { k: 'admins', label: 'Admins (Namen, mit Komma getrennt)', max: 300, full: true },
     { k: 'admin_code', label: 'Admin-Code', max: 40, hint: 'Brauchen Admins beim Anmelden im Spiel. Leer = niemand kann Admin werden.' },
     { k: 'motd', label: 'Begrüßung im Spiel', type: 'textarea', max: 300, full: true, rows: 2 },
   ];
   openForm({
-    title: 'Spielregeln', fields, values: { ...s, pvp: s.pvp ? 'ja' : 'nein' },
+    title: 'Welt & Regeln', fields, values: { weather: 'Klar', time_mode: 'Finsternis', cycle_minutes: 20, spawn_x: 0, spawn_z: 0, player_colors: '#A78BFA, #38BDF8, #22C55E, #F59E0B, #F472B6, #EF4444', treasure_every: 0, ...s, pvp: s.pvp ? 'ja' : 'nein' },
     onSubmit: async (v) => {
-      const doc = { ...v, pvp: v.pvp === 'ja', start_coins: num0(v.start_coins), version: (Number(s.version) || 1) + 1 };
+      const doc = { ...v, pvp: v.pvp === 'ja', start_coins: num0(v.start_coins), spawn_x: num0(v.spawn_x), spawn_z: num0(v.spawn_z), cycle_minutes: num0(v.cycle_minutes, 20), treasure_every: num0(v.treasure_every), version: (Number(s.version) || 1) + 1 };
       const ok = await commit('game_settings', 'main', 'update', doc, { action: 'bearbeitet', type: 'Spielregeln', title: 'ECLIPSE', detail: diffDetail(fields, { ...s, pvp: s.pvp ? 'ja' : 'nein' }, v).text });
       if (ok) toast('Regeln gespeichert – das Spiel übernimmt sie in wenigen Sekunden.');
       return ok;
@@ -1763,6 +1867,10 @@ Object.assign(ACTIONS_EXTRA, {
   'g-qu-new': () => gQuestForm(null), 'g-qu-edit': (id) => gQuestForm(id), 'g-qu-del': (id) => gDeleteDoc('game_quests', id, 'Quest'),
   'g-ve-new': () => gVehicleForm(null), 'g-ve-edit': (id) => gVehicleForm(id), 'g-ve-del': (id) => gDeleteDoc('game_vehicles', id, 'Fahrzeug'),
   'g-rules': () => gRulesForm(),
+  'g-auth': () => gAuthForm(),
+  'g-logout': () => { ls.set('dashKey', ''); location.reload(); },
+  'g-ev-start': (id, el) => gEventForm(el.dataset.k),
+  'g-ev-stop': async () => { if (await confirmDialog({ title: 'Event beenden?', html: 'Das laufende Event wird sofort beendet und ausgewertet.', ok: 'Beenden', danger: false })) gameCommand('event_stop', {}, 'Event beendet'); },
 });
 
 const VIEWS = { spiel: vSpiel, dashboard: vDashboard, phasen: vPhasen, aufgaben: vAufgaben, bereiche: vBereiche, bereich: vBereich, team: vTeam, technik: vTechnik, aktivitaet: vAktivitaet };
