@@ -35,7 +35,7 @@ export const DEFAULT_SETTINGS = {
   start_coins: 0,
   motd: 'Willkommen auf ECLIPSE! Drück Tab für Inventar, Herstellen und Quests.',
   pvp: false,
-  admins: 'dranoelgaming',
+  admins: 'dranoelgaming, Dinnerboneagg', // Leonard und Andrej
   admin_code: '',
   max_players: 40,
   version: 1,
@@ -208,9 +208,10 @@ export const INV_SLOTS = 32;
 export const HOTBAR = 8;
 
 /** Inhalte, die nach dem ersten Start dazugekommen sind (werden in bestehende Welten nachgetragen). */
-export const CONTENT_VERSION = 4;
+export const CONTENT_VERSION = 5;
 export const CONTENT_ADDED = {
   2: { items: ['treppe', 'fensterwand', 'zaun', 'dach', 'truhe'], recipes: ['r_zaun', 'r_truhe', 'r_fensterwand', 'r_treppe', 'r_dach'], quests: ['q_truhe', 'q_obergeschoss'] },
   3: { vehicles: ['v11', 'v12', 'v13', 'v14', 'v15', 'v16', 'v17', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23', 'v24', 'v25', 'v26'] },
   4: { vehicles: ['v27', 'v28', 'v29', 'v30', 'v31', 'v32', 'v33', 'v34'] },
+  5: { admins: ['Dinnerboneagg'] },
 };

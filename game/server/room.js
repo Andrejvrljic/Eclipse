@@ -60,10 +60,15 @@ export class Room {
           for (const id of add.recipes || []) ins(C.recipes, id, D.DEFAULT_RECIPES[id]);
           for (const id of add.quests || []) ins(C.quests, id, D.DEFAULT_QUESTS[id]);
           for (const id of add.vehicles || []) ins(C.vehicles, id, D.DEFAULT_VEHICLES[id]);
+          // Admin-Namen ergänzen (vorhandene bleiben)
+          for (const name of add.admins || []) {
+            const list = String(s.admins || '').split(',').map((x) => x.trim()).filter(Boolean);
+            if (!list.some((x) => x.toLowerCase() === name.toLowerCase())) s.admins = [...list, name].join(', ');
+          }
         }
         if (stmts.length) await db.batch(stmts);
-        await patchDoc(db, C.settings, 'main', { content_version: D.CONTENT_VERSION, version: (Number(s.version) || 1) + 1 });
-        await logActivity(db, { actor: 'Spielserver', action: 'ergänzt', type: 'Spiel', title: 'Neue Bauteile', detail: 'Neue Bauteile (Treppe, Fensterwand, Zaun, Schrägdach, Lagertruhe), Quests und 16 weitere Fahrzeuge' });
+        await patchDoc(db, C.settings, 'main', { admins: s.admins, content_version: D.CONTENT_VERSION, version: (Number(s.version) || 1) + 1 });
+        await logActivity(db, { actor: 'Spielserver', action: 'ergänzt', type: 'Spiel', title: 'Neue Bauteile', detail: `Neue Inhalte bis Version ${D.CONTENT_VERSION}; Admins: ${s.admins}` });
       }
       return;
     }
